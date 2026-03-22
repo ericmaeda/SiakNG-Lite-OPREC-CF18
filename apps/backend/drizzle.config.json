@@ -1,0 +1,9 @@
+{
+  "schema": "./src/infrastructure/database/schema/index.ts",
+  "out": "./drizzle",
+  "dialect": "postgresql",
+  "dbCredentials": {
+    "url": "postgresql://siakng:secret@localhost:5438/siakng_db"
+  },
+  "strict": true
+}
