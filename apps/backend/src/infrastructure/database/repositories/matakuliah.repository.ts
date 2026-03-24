@@ -11,19 +11,6 @@ export class MataKuliahRepository implements IMataKuliahRepository {
         private readonly drizzle: ReturnType<typeof DrizzleProvider.useFactory>
     ) {}
 
-    async findById(id: string): Promise<MataKuliahEntity | null> {
-        const mk = await this.drizzle
-            .select()
-            .from(matakuliah)
-            .where(eq(matakuliah.id, id))
-            .limit(1);
-        
-        if (mk.length === 0) {
-            return null;
-        }
-        return this.mapToEntity(mk[0]);
-    }
-
     async findByKode(kode: string): Promise<MataKuliahEntity | null> {
         const mk = await this.drizzle
             .select()
@@ -31,6 +18,32 @@ export class MataKuliahRepository implements IMataKuliahRepository {
             .where(eq(matakuliah.kode, kode))
             .limit(1);
 
+        if (mk.length === 0) {
+            return null;
+        }
+        return this.mapToEntity(mk[0]);
+    }
+
+    async findByNama(nama: string): Promise<MataKuliahEntity | null> {
+        const mk = await this.drizzle
+            .select()
+            .from(matakuliah)
+            .where(eq(matakuliah.nama, nama))
+            .limit(1);
+
+        if (mk.length === 0) {
+            return null;
+        }
+        return this.mapToEntity(mk[0]);
+    }
+
+    async findById(id: string): Promise<MataKuliahEntity | null> {
+        const mk = await this.drizzle
+            .select()
+            .from(matakuliah)
+            .where(eq(matakuliah.id, id))
+            .limit(1);
+        
         if (mk.length === 0) {
             return null;
         }
@@ -89,19 +102,6 @@ export class MataKuliahRepository implements IMataKuliahRepository {
         await this.drizzle
             .delete(matakuliah)
             .where(eq(matakuliah.id, id));
-    }
-
-    async findByNama(nama: string): Promise<MataKuliahEntity | null> {
-        const mk = await this.drizzle
-            .select()
-            .from(matakuliah)
-            .where(eq(matakuliah.nama, nama))
-            .limit(1);
-
-        if (mk.length === 0) {
-            return null;
-        }
-        return this.mapToEntity(mk[0]);
     }
 
     private mapToEntity(data: {

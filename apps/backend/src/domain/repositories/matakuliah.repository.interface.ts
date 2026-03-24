@@ -14,3 +14,5 @@ export interface IMataKuliahRepository {
     update(id: string, data: Partial<MataKuliahEntity>): Promise<MataKuliahEntity>;
     delete(id: string): Promise<void>;
 }
+
+export const MATAKULIAH_REPOSITORY = Symbol('MATAKULIAH_REPOSITORY');

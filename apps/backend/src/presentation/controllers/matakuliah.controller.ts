@@ -11,12 +11,13 @@ import {
 } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { IMataKuliahRepository } from 'src/domain/repositories/matakuliah.repository.interface';
-import { RolesGuard } from '../guards/role.guards';
+import { RolesGuard } from '../guards/role.guard';
 import { Roles } from '../guards/roles.decorator';
 import { UserRole } from 'src/domain/entities/user.entity';
+import { JwtAuthGuard } from 'src/infrastructure/auth/jwt-auth.guard';
 
 @Controller('matakuliah')
-@UseGuards(RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class MatakuliahController {
     constructor(
         @Inject('MATAKULIAH_REPOSITORY')
