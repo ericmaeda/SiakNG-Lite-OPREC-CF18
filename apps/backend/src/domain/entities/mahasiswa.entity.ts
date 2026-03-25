@@ -5,8 +5,8 @@ export class MahasiswaEntity {
         public npm: string,
         public prodi: string,
         public fakultas: string,
-        public angkatan: number,
-        public ipk: string,
+        public angkatan: string,
+        public ipk: number,
         public semester: number
     ) {}
 }
