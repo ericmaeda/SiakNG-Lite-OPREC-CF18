@@ -11,6 +11,11 @@ export class MataKuliahRepository implements IMataKuliahRepository {
         private readonly drizzle: ReturnType<typeof DrizzleProvider.useFactory>
     ) {}
 
+    async findAll(): Promise<MataKuliahEntity[]> {
+        const mk = await this.drizzle.select().from(matakuliah);
+        return mk.map(item => this.mapToEntity(item));
+    }
+
     async findByKode(kode: string): Promise<MataKuliahEntity | null> {
         const mk = await this.drizzle
             .select()
