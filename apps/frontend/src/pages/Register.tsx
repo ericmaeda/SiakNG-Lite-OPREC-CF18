@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { useNavigate, useLocation, Link } from 'react-router'
-import { useAuth } from '../lib/auth-context'
+import { useNavigate, Link } from 'react-router'
+import { api } from '../lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import type { UserRole } from '@siakng/types'
 
 // Color palette
 const colors = {
@@ -13,16 +14,23 @@ const colors = {
   neutral: '#1A1A1A',
 }
 
-export function Login() {
+export function Register() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const { login } = useAuth()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    nama: '',
+    role: 'MAHASISWA' as UserRole,
+  })
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
-  const from = (location.state as any)?.from?.pathname || '/dashboard'
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,10 +38,13 @@ export function Login() {
     setIsLoading(true)
 
     try {
-      await login(email, password)
-      navigate(from, { replace: true })
+      const response = await api.register(formData)
+      
+      if (response.user) {
+        navigate('/dashboard')
+      }
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.')
+      setError(err.message || 'Registrasi gagal. Silakan coba lagi.')
     } finally {
       setIsLoading(false)
     }
@@ -47,9 +58,9 @@ export function Login() {
         style={{ backgroundColor: colors.secondary }}
       >
         {/* Decorative circles */}
-        <div className="absolute top-20 left-20 w-64 h-64 rounded-full opacity-20" style={{ backgroundColor: colors.primary }} />
-        <div className="absolute bottom-20 right-20 w-96 h-96 rounded-full opacity-10" style={{ backgroundColor: colors.tertiary }} />
-        <div className="absolute top-1/2 left-1/3 w-32 h-32 rounded-full opacity-15" style={{ backgroundColor: colors.tertiary }} />
+        <div className="absolute top-20 right-20 w-64 h-64 rounded-full opacity-20" style={{ backgroundColor: colors.tertiary }} />
+        <div className="absolute bottom-20 left-20 w-96 h-96 rounded-full opacity-10" style={{ backgroundColor: colors.primary }} />
+        <div className="absolute top-1/3 right-1/3 w-32 h-32 rounded-full opacity-15" style={{ backgroundColor: colors.primary }} />
         
         <div className="relative z-10 text-center">
           <h1 
@@ -62,20 +73,20 @@ export function Login() {
             Lite
           </h2>
           <p className="text-lg text-gray-300 text-center max-w-md px-8 mb-8 leading-relaxed">
-            Sistem Informasi Akademik Modern untuk mengelola mata kuliah, nilai, dan jadwal perkuliahan dengan mudah dan efisien.
+            Bergabunglah dengan ribuan mahasiswa dan dosen dalam sistem akademik digital yang modern dan efisien.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
             <span 
               className="px-5 py-2 rounded-full text-sm font-medium shadow-lg"
-              style={{ backgroundColor: colors.tertiary, color: colors.secondary }}
+              style={{ backgroundColor: colors.primary, color: colors.secondary }}
             >
-              Akademik Digital
+              Gratis Terdaftar
             </span>
             <span 
               className="px-5 py-2 rounded-full text-sm font-medium shadow-lg"
-              style={{ backgroundColor: colors.primary, color: colors.secondary }}
+              style={{ backgroundColor: colors.tertiary, color: colors.secondary }}
             >
-              Modern & Cepat
+              Akses Penuh
             </span>
           </div>
         </div>
@@ -83,21 +94,21 @@ export function Login() {
         {/* Bottom feature list */}
         <div className="absolute bottom-12 left-0 right-0 flex justify-center gap-8 text-gray-400 text-sm">
           <span className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.primary }} />
+            100% Online
+          </span>
+          <span className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.tertiary }} />
-            Kelola Mata Kuliah
+            Data Aman
           </span>
           <span className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.primary }} />
-            Input Nilai
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.tertiary }} />
-            Jadwal Kuliah
+            Realtime
           </span>
         </div>
       </div>
 
-      {/* Right Side - Login Form */}
+      {/* Right Side - Register Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 p-8">
         <div className="w-full max-w-md">
           {/* Mobile header */}
@@ -113,14 +124,14 @@ export function Login() {
                 className="text-2xl font-bold"
                 style={{ color: colors.secondary }}
               >
-                Welcome Back
+                Buat Akun
               </h2>
               <p className="text-gray-500 mt-2">
-                Masuk untuk melanjutkan
+                Daftar untuk memulai
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
                 <div className="p-4 text-sm text-red-500 bg-red-50 rounded-lg border border-red-100">
                   {error}
@@ -128,19 +139,36 @@ export function Login() {
               )}
               
               <div className="space-y-2">
+                <Label htmlFor="nama" className="text-sm font-medium text-gray-700">
+                  Nama Lengkap
+                </Label>
+                <Input
+                  id="nama"
+                  name="nama"
+                  type="text"
+                  placeholder="John Doe"
+                  value={formData.nama}
+                  onChange={handleChange}
+                  required
+                  disabled={isLoading}
+                  className="h-12 rounded-lg border-gray-200"
+                />
+              </div>
+              
+              <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-gray-700">
                   Email
                 </Label>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="email@universitas.edu"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={formData.email}
+                  onChange={handleChange}
                   required
                   disabled={isLoading}
-                  className="h-12 rounded-lg border-gray-200 focus:ring-2 focus:ring-offset-1"
-                  style={{ '--tw-ring-color': colors.primary } as React.CSSProperties}
+                  className="h-12 rounded-lg border-gray-200"
                 />
               </div>
               
@@ -150,24 +178,34 @@ export function Login() {
                 </Label>
                 <Input
                   id="password"
+                  name="password"
                   type="password"
                   placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={formData.password}
+                  onChange={handleChange}
                   required
                   disabled={isLoading}
                   className="h-12 rounded-lg border-gray-200"
                 />
               </div>
 
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="w-4 h-4 rounded border-gray-300" />
-                  <span className="text-gray-500">Ingat saya</span>
-                </label>
-                <a href="#" className="hover:underline" style={{ color: colors.neutral }}>
-                  Lupa password?
-                </a>
+              <div className="space-y-2">
+                <Label htmlFor="role" className="text-sm font-medium text-gray-700">
+                  Daftar Sebagai
+                </Label>
+                <select
+                  id="role"
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="flex h-12 w-full rounded-lg border border-gray-200 bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={isLoading}
+                  style={{ '--tw-ring-color': colors.primary } as React.CSSProperties}
+                >
+                  <option value="MAHASISWA">Mahasiswa</option>
+                  <option value="DOSEN">Dosen</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
               </div>
 
               <Button
@@ -187,19 +225,19 @@ export function Login() {
                     </svg>
                     Memproses...
                   </span>
-                ) : 'Masuk'}
+                ) : 'Daftar Sekarang'}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
               <p className="text-gray-500">
-                Belum punya akun?{' '}
+                Sudah punya akun?{' '}
                 <Link 
-                  to="/register" 
+                  to="/login" 
                   className="font-medium hover:underline transition-colors"
                   style={{ color: colors.tertiary }}
                 >
-                  Daftar Sekarang
+                  Masuk
                 </Link>
               </p>
             </div>
