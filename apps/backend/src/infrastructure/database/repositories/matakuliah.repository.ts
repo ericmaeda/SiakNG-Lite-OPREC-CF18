@@ -61,6 +61,7 @@ export class MataKuliahRepository implements IMataKuliahRepository {
         sks: number;
         semester: number;
         dosenId: string;
+        kapasitas: number;
     }): Promise<MataKuliahEntity> {
         const result = await this.drizzle
             .insert(matakuliah)
@@ -70,6 +71,7 @@ export class MataKuliahRepository implements IMataKuliahRepository {
                 sks: data.sks,
                 semester: data.semester,
                 dosenId: data.dosenId,
+                kapasitas: data.kapasitas,
             })
             .returning();
 
@@ -82,6 +84,7 @@ export class MataKuliahRepository implements IMataKuliahRepository {
         sks: number;
         semester: number;
         dosenId: string;
+        kapasitas: number;
     }>): Promise<MataKuliahEntity> {
         const updateData: Record<string, unknown> = { updatedAt: new Date() };
 
@@ -90,6 +93,7 @@ export class MataKuliahRepository implements IMataKuliahRepository {
         if (data.sks) updateData.sks = data.sks;
         if (data.semester) updateData.semester = data.semester;
         if (data.dosenId) updateData.dosenId = data.dosenId;
+        if (data.kapasitas) updateData.kapasitas = data.kapasitas;
 
         const result = await this.drizzle
             .update(matakuliah)
@@ -118,6 +122,7 @@ export class MataKuliahRepository implements IMataKuliahRepository {
         nama: string;
         sks: number;
         semester: number;
+        kapasitas: number;
     }): MataKuliahEntity {
         return new MataKuliahEntity(
             data.id,
@@ -127,7 +132,8 @@ export class MataKuliahRepository implements IMataKuliahRepository {
             data.updatedAt,
             data.nama,
             data.sks,
-            data.semester
+            data.semester,
+            data.kapasitas
         );
     }
 }

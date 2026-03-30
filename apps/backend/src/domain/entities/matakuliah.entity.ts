@@ -7,6 +7,7 @@ export class MataKuliahEntity {
         public readonly updatedAt: Date,
         public nama: string,
         public sks: number,
-        public semester: number 
+        public semester: number,
+        public kapasitas: number
     ) {}
 }
