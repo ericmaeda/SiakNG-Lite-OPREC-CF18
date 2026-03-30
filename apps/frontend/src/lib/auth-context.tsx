@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react'
 import { api, type LoginResponse } from './api'
 import type { User, UserRole } from '@siakng/types'
 
@@ -19,7 +19,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Check for existing auth on mount
     const storedUser = api.getCurrentUser()
-    if (storedUser && api.isAuthenticated()) {
+    const hasToken = api.isAuthenticated()
+    
+    if (storedUser && hasToken) {
       setUser(storedUser)
     }
     setIsLoading(false)
@@ -49,16 +51,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
+  const value = useMemo(() => ({
+    user,
+    isLoading,
+    isAuthenticated: !!user,
+    login,
+    logout,
+  }), [user, isLoading])
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        login,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   )

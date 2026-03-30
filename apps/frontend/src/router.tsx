@@ -1,16 +1,29 @@
-import { createBrowserRouter, RouterProvider, redirect } from 'react-router'
-import { Home } from './pages/Home'
-import { Login } from './pages/Login'
-import { Register } from './pages/Register'
-import { Dashboard } from './pages/Dashboard'
-import { Matakuliah } from './pages/Matakuliah'
-import { RootLayout } from './layouts/RootLayout'
-import { ProtectedRoute } from './lib/protected-route'
-import { api } from './lib/api'
+import { createBrowserRouter, Navigate } from 'react-router';
+import { Login } from './pages/Login';
+import { Register } from './pages/Register';
+import { DashboardDosen } from './pages/DashboardDosen';
+import { DashboardMahasiswa } from './pages/DashboardMahasiswa';
+import { Matakuliah } from './pages/Matakuliah';
+import { RootLayout } from './layouts/RootLayout';
+import { ProtectedRoute } from './lib/protected-route';
+import { useAuth } from './lib/auth-context';
+
+// Wrapper component for role-based dashboard
+function DashboardWrapper() {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role === 'DOSEN' || user.role === 'ADMIN') {
+    return <DashboardDosen />;
+  }
+
+  return <DashboardMahasiswa />;
+}
 
 // React Router v7 configuration
-// Learn more at https://reactrouter.com/start
-
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -18,54 +31,42 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        Component: Home,
+        Component: Login,
       },
       {
         path: 'login',
         Component: Login,
-        loader: () => {
-          // Redirect to dashboard if already logged in
-          if (api.isAuthenticated()) {
-            return redirect('/dashboard')
-          }
-          return null
-        }
       },
       {
         path: 'register',
         Component: Register,
-        loader: () => {
-          // Redirect to dashboard if already logged in
-          if (api.isAuthenticated()) {
-            return redirect('/dashboard')
-          }
-          return null
-        }
       },
       {
         path: 'dashboard',
-        loader: () => {
-          // Require authentication
-          if (!api.isAuthenticated()) {
-            return redirect('/login')
-          }
-          return null
-        },
         element: (
           <ProtectedRoute>
-            <Dashboard />
+            <DashboardWrapper />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'dashboard-dosen',
+        element: (
+          <ProtectedRoute allowedRoles={['DOSEN', 'ADMIN']}>
+            <DashboardDosen />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'dashboard-mahasiswa',
+        element: (
+          <ProtectedRoute allowedRoles={['MAHASISWA']}>
+            <DashboardMahasiswa />
           </ProtectedRoute>
         ),
       },
       {
         path: 'matakuliah',
-        loader: () => {
-          // Require authentication
-          if (!api.isAuthenticated()) {
-            return redirect('/login')
-          }
-          return null
-        },
         element: (
           <ProtectedRoute>
             <Matakuliah />
@@ -74,4 +75,4 @@ export const router = createBrowserRouter([
       },
     ],
   },
-])
+]);

@@ -38,6 +38,10 @@ export function Matakuliah() {
     }
   }
 
+  const handleAdd = async (id: string) => {
+    
+  }
+
   if (isLoading) {
     return (
       <div className="p-8 text-center">

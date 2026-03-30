@@ -40,7 +40,15 @@ export class AuthController {
             role: user.role
         });
 
-        return { access_token: token };
+        return {
+            access_token: token,
+            user: {
+                id: user.id,
+                email: user.email,
+                nama: user.nama,
+                role: user.role
+            }
+        };
     }
 
     @ApiOperation({ summary: 'Register new user' })

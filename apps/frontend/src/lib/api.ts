@@ -99,6 +99,10 @@ class ApiClient {
     localStorage.removeItem('user');
   }
 
+  isAuthenticated(): boolean {
+    return !!this.getToken();
+  }
+
   getCurrentUser(): User | null {
     const userStr = localStorage.getItem('user');
     return userStr ? JSON.parse(userStr) : null;
@@ -147,11 +151,6 @@ class ApiClient {
     return this.request(`/matakuliah/${id}`, {
       method: 'DELETE',
     });
-  }
-
-  // Check if user is authenticated
-  isAuthenticated(): boolean {
-    return !!this.getToken();
   }
 }
 
