@@ -1,4 +1,7 @@
-/* Custom styles */
-body {
-  @apply bg-white text-gray-900;
+@import "tailwindcss";
+
+@plugin "@tailwindcss/forms";
+
+@theme {
+  --font-sans: var(--font-geist-sans);
 }
