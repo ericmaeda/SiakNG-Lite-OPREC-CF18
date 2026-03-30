@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 
 export class MahasiswaRepository implements IMahasiswaRepository {
     constructor(
-        @Inject()
+        @Inject('DRIZZLE')
         private readonly drizzle: ReturnType<typeof DrizzleProvider.useFactory>
     ) {}
 

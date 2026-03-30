@@ -4,6 +4,7 @@ import { Register } from './pages/Register';
 import { DashboardDosen } from './pages/DashboardDosen';
 import { DashboardMahasiswa } from './pages/DashboardMahasiswa';
 import { Matakuliah } from './pages/Matakuliah';
+import { TambahMatakuliah } from './pages/TambahMatakuliah';
 import { RootLayout } from './layouts/RootLayout';
 import { ProtectedRoute } from './lib/protected-route';
 import { useAuth } from './lib/auth-context';
@@ -70,6 +71,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <Matakuliah />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'matakuliah/tambah',
+        element: (
+          <ProtectedRoute allowedRoles={['DOSEN', 'ADMIN']}>
+            <TambahMatakuliah />
           </ProtectedRoute>
         ),
       },

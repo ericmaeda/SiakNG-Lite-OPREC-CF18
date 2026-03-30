@@ -152,6 +152,11 @@ class ApiClient {
       method: 'DELETE',
     });
   }
+
+  // Dosen endpoints
+  async getDosen() {
+    return this.request('/dosen');
+  }
 }
 
 export const api = new ApiClient(API_BASE_URL);

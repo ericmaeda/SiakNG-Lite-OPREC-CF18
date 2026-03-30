@@ -7,9 +7,17 @@ import { eq } from "drizzle-orm";
 
 export class DosenRepository implements IDosenRepository {
     constructor(
-        @Inject()
+        @Inject('DRIZZLE')
         private readonly drizzle: ReturnType<typeof DrizzleProvider.useFactory>
     ) {}
+
+    async findAll(): Promise<DosenEntity[]> {
+        const lecturers = await this.drizzle
+            .select()
+            .from(dosen);
+        
+        return lecturers.map(this.mapToEntity);
+    }
 
     async findById(id: string): Promise<DosenEntity | null> {
         const lecturer = await this.drizzle

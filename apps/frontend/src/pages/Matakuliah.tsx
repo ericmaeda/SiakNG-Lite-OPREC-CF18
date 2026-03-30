@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router'
 import { useAuth } from '../lib/auth-context'
 import { api } from '../lib/api'
 import type { MataKuliah } from '@siakng/types'
 
 export function Matakuliah() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [matakuliah, setMatakuliah] = useState<MataKuliah[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -56,7 +58,10 @@ export function Matakuliah() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Daftar Mata Kuliah</h1>
         {isDosen && (
-          <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+          <button 
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            onClick={() => navigate('/matakuliah/tambah')}
+          >
             Tambah Mata Kuliah
           </button>
         )}

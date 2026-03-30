@@ -1,6 +1,7 @@
 import { DosenEntity } from "../entities/dosen.entity";
 
 export interface IDosenRepository {
+    findAll(): Promise<DosenEntity[]>;
     findById(id: string): Promise<DosenEntity | null>;
     findByUserId(userId: string): Promise<DosenEntity | null>;
     findByNip(nip: string): Promise<DosenEntity | null>;
