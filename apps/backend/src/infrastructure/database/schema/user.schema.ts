@@ -27,7 +27,8 @@ export const mahasiswa = pgTable('mahasiswa', {
     fakultas: varchar('fakultas', { length: 50 }).notNull(),
     angkatan: varchar('angkatan', { length: 4 }).notNull(),
     ipk: numeric('ipk', { precision: 3, scale: 2 }).notNull().default('0.00'),
-    semester: integer('semester').notNull().default(1)
+    semester: integer('semester').notNull().default(1),
+    maxSks: integer('max_sks').notNull().default(24) // Batas maksimal SKS per semester
 });
 
 export const dosen = pgTable('dosen', {
