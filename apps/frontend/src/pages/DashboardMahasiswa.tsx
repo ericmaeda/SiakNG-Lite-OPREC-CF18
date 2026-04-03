@@ -89,6 +89,7 @@ export function DashboardMahasiswa() {
               </Button>
               
               <Button
+                onClick={() => navigate('/irs')}
                 className="py-6 px-6 rounded-lg font-semibold"
                 style={{ 
                   backgroundColor: colors.primary, 
@@ -96,7 +97,7 @@ export function DashboardMahasiswa() {
                   border: 'none'
                 }}
               >
-                Lihat Nilai
+                IRS Saya
               </Button>
               
               <Button

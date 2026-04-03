@@ -5,6 +5,9 @@ import { DashboardDosen } from './pages/DashboardDosen';
 import { DashboardMahasiswa } from './pages/DashboardMahasiswa';
 import { Matakuliah } from './pages/Matakuliah';
 import { TambahMatakuliah } from './pages/TambahMatakuliah';
+import { EnrollMatkul } from './pages/EnrollmentMatkul';
+import { IrsPage } from './pages/IrsPage';
+import { IrsEnrollmentPage } from './pages/IrsEnrollmentPage';
 import { RootLayout } from './layouts/RootLayout';
 import { ProtectedRoute } from './lib/protected-route';
 import { useAuth } from './lib/auth-context';
@@ -82,6 +85,30 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      {
+        path: 'matakuliah/enroll',
+        element: (
+          <ProtectedRoute allowedRoles={['MAHASISWA']}>
+            <EnrollMatkul />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'irs',
+        element: (
+          <ProtectedRoute allowedRoles={['MAHASISWA']}>
+            <IrsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'irs/enroll',
+        element: (
+          <ProtectedRoute allowedRoles={['MAHASISWA']}>
+            <IrsEnrollmentPage />
+          </ProtectedRoute>
+        ),
+      }
     ],
   },
 ]);

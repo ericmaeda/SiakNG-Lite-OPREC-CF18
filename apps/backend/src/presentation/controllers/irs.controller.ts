@@ -1,4 +1,4 @@
-import { Controller, Post, Delete, Get, Patch, Body, Param, UseGuards, Request, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Controller, Post, Delete, Get, Patch, Body, Param, UseGuards, Request, ForbiddenException, NotFoundException, Query } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { IIrsRepository, IRS_REPOSITORY } from 'src/domain/repositories/irs.repository.interface';
 import { IKelasRepository, KELAS_REPOSITORY } from 'src/domain/repositories/kelas.repository.interface';
@@ -39,7 +39,7 @@ export class IrsController {
         },
         @Request() req: any
     ) {
-        const userId = req.user.userId;
+        const userId = req.user.id;  // JWT payload has 'id', not 'userId'
 
         // 1. Get mahasiswa ID from user ID
         const mahasiswaResult = await this.drizzle
@@ -134,7 +134,7 @@ export class IrsController {
         @Param('kelasId') kelasId: string,
         @Request() req: any
     ) {
-        const userId = req.user.userId;
+        const userId = req.user.id;  // JWT payload has 'id', not 'userId'
 
         // Get mahasiswa ID
         const mahasiswaResult = await this.drizzle
@@ -166,9 +166,9 @@ export class IrsController {
     @ApiResponse({ status: 200, description: 'Daftar mata kuliah yang diambil' })
     async getMyIrs(
         @Request() req: any,
-        @Body() query: { semester?: number; tahunAkademik?: string }
+        @Query() query: { semester?: number; tahunAkademik?: string }
     ) {
-        const userId = req.user.userId;
+        const userId = req.user.id;  // JWT payload has 'id', not 'userId'
 
         // Get mahasiswa ID
         const mahasiswaResult = await this.drizzle
@@ -236,7 +236,7 @@ export class IrsController {
     @ApiOperation({ summary: 'Lihat semua kelas saya (DOSEN)' })
     @ApiResponse({ status: 200, description: 'Daftar kelas yang diajar' })
     async getMyKelas(@Request() req: any) {
-        const dosenId = req.user.userId;
+        const dosenId = req.user.id;  // JWT payload has 'id', not 'userId'
         
         const kelasList = await this.kelasRepo.findByDosenId(dosenId);
         
@@ -294,7 +294,7 @@ export class IrsController {
         },
         @Request() req: any
     ) {
-        const dosenId = req.user.userId;
+        const dosenId = req.user.id;  // JWT payload has 'id', not 'userId'
         return this.kelasRepo.create({
             ...data,
             dosenId,

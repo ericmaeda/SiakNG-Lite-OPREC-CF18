@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { IMataKuliahRepository, MATAKULIAH_REPOSITORY } from 'src/domain/repositories/matakuliah.repository.interface';
+import { IKelasRepository, KELAS_REPOSITORY } from 'src/domain/repositories/kelas.repository.interface';
 import { RolesGuard } from '../guards/role.guard';
 import { Roles } from '../guards/roles.decorator';
 import { JwtAuthGuard } from 'src/infrastructure/auth/jwt-auth.guard';
@@ -23,7 +24,9 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 export class MatakuliahController {
     constructor(
         @Inject(MATAKULIAH_REPOSITORY)
-        private readonly matakuliahRepository: IMataKuliahRepository
+        private readonly matakuliahRepository: IMataKuliahRepository,
+        @Inject(KELAS_REPOSITORY)
+        private readonly kelasRepository: IKelasRepository
     ) {}
 
     @Get()
@@ -48,7 +51,22 @@ export class MatakuliahController {
         },
         @Request() req: any
     ) {
-        return this.matakuliahRepository.create(data);
+        // Create mata kuliah
+        const mataKuliah = await this.matakuliahRepository.create(data);
+        
+        // Auto-create default kelas "A" for this mata kuliah
+        await this.kelasRepository.create({
+            mataKuliahId: mataKuliah.id,
+            nama: 'A',
+            quota: 40,  // Default quota
+            ruangan: null,
+            hari: null,
+            jamMulai: null,
+            jamSelesai: null,
+            dosenId: data.dosenId || req.user.id,
+        });
+        
+        return mataKuliah;
     }
 
     @Patch(':id')
