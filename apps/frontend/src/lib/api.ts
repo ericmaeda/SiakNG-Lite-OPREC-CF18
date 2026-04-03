@@ -1,4 +1,4 @@
-import type { User, UserRole, MataKuliah, Kelas, IrsEnrollment, IrsSummary, IrsEnrollmentResponse } from '@siakng/types'
+import type { User, UserRole, MataKuliah, Kelas, IrsSummary, IrsEnrollmentResponse } from '@siakng/types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
@@ -41,12 +41,15 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<T> {
     const token = this.getToken();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    }
+    const headers: Record<string, string> = {};
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Only set Content-Type for requests with body
+    if (options.body && typeof options.body === 'string') {
+      headers['Content-Type'] = 'application/json';
     }
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -119,6 +122,33 @@ class ApiClient {
 
   async getMataKuliahById(id: string) {
     return this.request<MataKuliah>(`/matakuliah/${id}`);
+  }
+
+  async getMataKuliahDetail(id: string) {
+    return this.request<{
+      mataKuliah: {
+        id: string;
+        kode: string;
+        nama: string;
+        sks: number;
+        semester: number;
+      };
+      dosen: {
+        id: string;
+        nama: string;
+        email: string;
+      } | null;
+      kelas: Array<{
+        id: string;
+        nama: string;
+        quota: number;
+        ruangan: string | null;
+        hari: string | null;
+        jamMulai: string | null;
+        jamSelesai: string | null;
+        currentEnrollment: number;
+      }>;
+    }>(`/matakuliah/detail/${id}`);
   }
 
   async createMataKuliah(data: {
@@ -246,6 +276,24 @@ class ApiClient {
     return this.request<{ message: string }>(`/irs/kelas/${kelasId}`, {
       method: 'DELETE',
     });
+  }
+
+  // ============ DOSEN - View Students ============
+
+  // Get mahasiswa profile
+  async getMahasiswaProfile(mahasiswaId: string): Promise<{
+    id: string;
+    npm: string;
+    nama: string;
+    email: string;
+    prodi: string;
+    fakultas: string;
+    angkatan: string;
+    ipk: string;
+    semester: number;
+    maxSks: number;
+  }> {
+    return this.request(`/mahasiswa/${mahasiswaId}/profile`);
   }
 }
 

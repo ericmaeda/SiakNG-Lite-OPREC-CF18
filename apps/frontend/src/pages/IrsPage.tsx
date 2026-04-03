@@ -20,6 +20,7 @@ export function IrsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [unenrollingId, setUnenrollingId] = useState<string | null>(null)
+  const [confirmUnenroll, setConfirmUnenroll] = useState<{ kelasId: string; nama: string } | null>(null)
 
   // Default to current semester/year
   const currentDate = new Date()
@@ -47,17 +48,20 @@ export function IrsPage() {
     }
   }
 
-  const handleUnenroll = async (kelasId: string, mataKuliahNama: string) => {
-    if (!confirm(`Yakin ingin melepas mata kuliah "${mataKuliahNama}" dari IRS?`)) {
-      return
-    }
+  const handleUnenroll = (kelasId: string, mataKuliahNama: string) => {
+    setConfirmUnenroll({ kelasId, nama: mataKuliahNama })
+  }
 
+  const handleConfirmUnenroll = async () => {
+    if (!confirmUnenroll) return
+    
     try {
-      setUnenrollingId(kelasId)
-      await api.unenrollFromKelas(kelasId)
+      setUnenrollingId(confirmUnenroll.kelasId)
+      setConfirmUnenroll(null)
+      await api.unenrollFromKelas(confirmUnenroll.kelasId)
       await loadIrs() // Refresh data
     } catch (err: any) {
-      alert(err.message || 'Gagal melepas mata kuliah')
+      setError(err.message || 'Gagal melepas mata kuliah')
     } finally {
       setUnenrollingId(null)
     }
@@ -154,6 +158,45 @@ export function IrsPage() {
           </div>
         )}
 
+        {/* Confirmation Dialog */}
+        {confirmUnenroll && (
+          <Card className="mb-6" style={{ backgroundColor: '#2A2A2A', border: `2px solid ${colors.danger}` }}>
+            <CardContent className="p-6">
+              <h3 className="text-xl font-bold mb-4" style={{ color: colors.danger }}>
+                Konfirmasi Lepas Mata Kuliah
+              </h3>
+              <p className="text-gray-300 mb-6">
+                Apakah Anda yakin ingin melepas mata kuliah <span className="font-medium text-white">{confirmUnenroll.nama}</span> dari IRS?
+              </p>
+              <div className="flex gap-4">
+                <Button
+                  onClick={() => setConfirmUnenroll(null)}
+                  className="flex-1 py-3 rounded-lg font-medium"
+                  style={{ 
+                    backgroundColor: '#4A4A4A', 
+                    color: 'white',
+                    border: 'none'
+                  }}
+                >
+                  Batal
+                </Button>
+                <Button
+                  onClick={handleConfirmUnenroll}
+                  disabled={!!unenrollingId}
+                  className="flex-1 py-3 rounded-lg font-medium"
+                  style={{ 
+                    backgroundColor: colors.danger, 
+                    color: 'white',
+                    border: 'none'
+                  }}
+                >
+                  {unenrollingId ? 'Melepas...' : 'Ya, Lepas'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* SKS Summary Card */}
         <Card className="mb-8" style={{ backgroundColor: '#2A2A2A', border: 'none' }}>
           <CardContent className="p-6">
@@ -222,9 +265,13 @@ export function IrsPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-white">
+                          <button 
+                            onClick={() => enrollment.mataKuliah?.id && navigate(`/matakuliah/detail/${enrollment.mataKuliah.id}`)}
+                            className="text-lg font-semibold text-left hover:underline"
+                            style={{ color: colors.primary, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                          >
                             {enrollment.mataKuliah?.nama || 'Unknown'}
-                          </h3>
+                          </button>
                           <span className="px-2 py-0.5 rounded text-xs font-medium" 
                             style={{ backgroundColor: '#4A4A4A', color: colors.tertiary }}>
                             {enrollment.mataKuliah?.kode}

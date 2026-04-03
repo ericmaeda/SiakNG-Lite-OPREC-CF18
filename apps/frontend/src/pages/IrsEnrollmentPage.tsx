@@ -23,6 +23,7 @@ export function IrsEnrollmentPage() {
   const [error, setError] = useState('')
   const [enrollingMatkulId, setEnrollingMatkulId] = useState<string | null>(null)
   const [enrollSuccess, setEnrollSuccess] = useState<string | null>(null)
+  const [confirmMatkul, setConfirmMatkul] = useState<MataKuliah | null>(null)
 
   useEffect(() => {
     loadInitialData()
@@ -81,13 +82,24 @@ export function IrsEnrollmentPage() {
       return
     }
 
-    if (!confirm(`Ambil mata kuliah "${matakuliah.nama}" (${matakuliah.sks} SKS)?`)) {
+    // Show confirmation dialog
+    setConfirmMatkul(matakuliah)
+  }
+
+  const handleConfirmEnroll = async () => {
+    if (!confirmMatkul) return
+    
+    const kelas = kelasMap[confirmMatkul.id]
+    if (!kelas) {
+      setError('Kelas tidak tersedia untuk mata kuliah ini')
+      setConfirmMatkul(null)
       return
     }
 
     try {
-      setEnrollingMatkulId(matakuliah.id)
+      setEnrollingMatkulId(confirmMatkul.id)
       setError('')
+      setConfirmMatkul(null)
       
       const currentDate = new Date()
       const currentYear = currentDate.getFullYear()
@@ -103,7 +115,7 @@ export function IrsEnrollmentPage() {
         tahunAkademik,
       })
       
-      setEnrollSuccess(`${matakuliah.nama} berhasil ditambahkan ke IRS!`)
+      setEnrollSuccess(`${confirmMatkul.nama} berhasil ditambahkan ke IRS!`)
       
       // Refresh data
       await loadInitialData()
@@ -220,6 +232,63 @@ export function IrsEnrollmentPage() {
           </div>
         )}
 
+        {/* Confirmation Dialog */}
+        {confirmMatkul && (
+          <Card className="mb-6" style={{ backgroundColor: '#2A2A2A', border: `2px solid ${colors.primary}` }}>
+            <CardContent className="p-6">
+              <h3 className="text-xl font-bold mb-4" style={{ color: colors.primary }}>
+                Konfirmasi Pengambilan Mata Kuliah
+              </h3>
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Mata Kuliah</span>
+                  <span className="text-white font-medium">{confirmMatkul.nama}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Kode</span>
+                  <span className="text-white">{confirmMatkul.kode}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">SKS</span>
+                  <span className="text-white">{confirmMatkul.sks} SKS</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Sisa Kuota SKS</span>
+                  <span className="text-white">{irsData?.sisaSks || 0} SKS</span>
+                </div>
+              </div>
+              <p className="text-gray-300 mb-6">
+                Apakah Anda yakin ingin mengambil mata kuliah ini?
+              </p>
+              <div className="flex gap-4">
+                <Button
+                  onClick={() => setConfirmMatkul(null)}
+                  className="flex-1 py-3 rounded-lg font-medium"
+                  style={{ 
+                    backgroundColor: '#4A4A4A', 
+                    color: 'white',
+                    border: 'none'
+                  }}
+                >
+                  Batal
+                </Button>
+                <Button
+                  onClick={handleConfirmEnroll}
+                  disabled={enrollingMatkulId === confirmMatkul.id}
+                  className="flex-1 py-3 rounded-lg font-medium"
+                  style={{ 
+                    backgroundColor: colors.primary, 
+                    color: colors.secondary,
+                    border: 'none'
+                  }}
+                >
+                  {enrollingMatkulId === confirmMatkul.id ? 'Mengambil...' : 'Ya, Ambil'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Mata Kuliah List */}
         <Card style={{ backgroundColor: '#2A2A2A', border: 'none' }}>
           <CardHeader>
@@ -249,9 +318,13 @@ export function IrsEnrollmentPage() {
                     >
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-white">
+                          <button 
+                            onClick={() => navigate(`/matakuliah/detail/${matakuliah.id}`)}
+                            className="text-lg font-semibold text-left hover:underline"
+                            style={{ color: colors.primary, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                          >
                             {matakuliah.nama}
-                          </h3>
+                          </button>
                           <span className="px-2 py-0.5 rounded text-xs font-medium" 
                             style={{ backgroundColor: '#4A4A4A', color: colors.tertiary }}>
                             {matakuliah.kode}

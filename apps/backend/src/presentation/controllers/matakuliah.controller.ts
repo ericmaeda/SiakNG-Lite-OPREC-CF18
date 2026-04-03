@@ -16,6 +16,10 @@ import { RolesGuard } from '../guards/role.guard';
 import { Roles } from '../guards/roles.decorator';
 import { JwtAuthGuard } from 'src/infrastructure/auth/jwt-auth.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { DrizzleProvider } from 'src/infrastructure/database/drizzle.provider';
+import { users, irs } from 'src/infrastructure/database/schema';
+import { eq, count } from 'drizzle-orm';
+import { NotFoundException } from '@nestjs/common';
 
 @ApiTags('matakuliah')
 @ApiBearerAuth()
@@ -26,7 +30,9 @@ export class MatakuliahController {
         @Inject(MATAKULIAH_REPOSITORY)
         private readonly matakuliahRepository: IMataKuliahRepository,
         @Inject(KELAS_REPOSITORY)
-        private readonly kelasRepository: IKelasRepository
+        private readonly kelasRepository: IKelasRepository,
+        @Inject('DRIZZLE')
+        private readonly drizzle: ReturnType<typeof DrizzleProvider.useFactory>
     ) {}
 
     @Get()
@@ -39,6 +45,55 @@ export class MatakuliahController {
         return this.matakuliahRepository.findById(id);
     }
 
+    @Get('detail/:id')
+    @UseGuards(JwtAuthGuard)
+    async getDetail(@Param('id') id: string) {
+        // Get mata kuliah
+        const mataKuliah = await this.matakuliahRepository.findById(id);
+        if (!mataKuliah) {
+            throw new NotFoundException('Mata kuliah tidak ditemukan');
+        }
+
+        // Get kelas with enrollment count
+        const kelasList = await this.kelasRepository.findByMataKuliahId(id);
+        
+        // Get dosen's info
+        const dosenResult = await this.drizzle
+            .select({
+                id: users.id,
+                nama: users.nama,
+                email: users.email,
+            })
+            .from(users)
+            .where(eq(users.id, mataKuliah.dosenId))
+            .limit(1);
+
+        const kelasWithEnrollment = await Promise.all(
+            kelasList.map(async (k) => {
+                const countResult = await this.drizzle
+                    .select({ count: count() })
+                    .from(irs)
+                    .where(eq(irs.kelasId, k.id));
+                return {
+                    ...k,
+                    currentEnrollment: countResult[0]?.count || 0,
+                };
+            })
+        );
+
+        return {
+            mataKuliah: {
+                id: mataKuliah.id,
+                kode: mataKuliah.kode,
+                nama: mataKuliah.nama,
+                sks: mataKuliah.sks,
+                semester: mataKuliah.semester,
+            },
+            dosen: dosenResult[0] || null,
+            kelas: kelasWithEnrollment,
+        };
+    }
+
     @Post()
     @Roles('DOSEN')
     async create(
@@ -47,12 +102,19 @@ export class MatakuliahController {
             nama: string;
             sks: number;
             semester: number;
-            dosenId: string;
+            dosisId?: string;
+            dosenId?: string;
         },
         @Request() req: any
     ) {
         // Create mata kuliah
-        const mataKuliah = await this.matakuliahRepository.create(data);
+        const mataKuliah = await this.matakuliahRepository.create({
+            kode: data.kode,
+            nama: data.nama,
+            sks: data.sks,
+            semester: data.semester,
+            dosenId: data.dosenId || data.dosisId || req.user.id,
+        });
         
         // Auto-create default kelas "A" for this mata kuliah
         await this.kelasRepository.create({
@@ -63,7 +125,7 @@ export class MatakuliahController {
             hari: null,
             jamMulai: null,
             jamSelesai: null,
-            dosenId: data.dosenId || req.user.id,
+            dosenId: data.dosenId || data.dosisId || req.user.id,
         });
         
         return mataKuliah;
@@ -78,7 +140,7 @@ export class MatakuliahController {
             nama: string;
             sks: number;
             semester: number;
-            dosenId: string;
+            dosisId: string;
         }>
     ) {
         return this.matakuliahRepository.update(id, data);

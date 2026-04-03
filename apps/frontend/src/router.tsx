@@ -8,6 +8,10 @@ import { TambahMatakuliah } from './pages/TambahMatakuliah';
 import { EnrollMatkul } from './pages/EnrollmentMatkul';
 import { IrsPage } from './pages/IrsPage';
 import { IrsEnrollmentPage } from './pages/IrsEnrollmentPage';
+import { MataKuliahDetail } from './pages/MataKuliahDetail';
+import { KelasMahasiswaPage } from './pages/KelasMahasiswaPage';
+import { MahasiswaProfilePage } from './pages/MahasiswaProfilePage';
+import { DosenKelasPage } from './pages/DosenKelasPage';
 import { RootLayout } from './layouts/RootLayout';
 import { ProtectedRoute } from './lib/protected-route';
 import { useAuth } from './lib/auth-context';
@@ -78,6 +82,14 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'matakuliah/detail/:id',
+        element: (
+          <ProtectedRoute>
+            <MataKuliahDetail />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: 'matakuliah/tambah',
         element: (
           <ProtectedRoute allowedRoles={['DOSEN', 'ADMIN']}>
@@ -106,6 +118,30 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={['MAHASISWA']}>
             <IrsEnrollmentPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'kelas/:kelasId/mahasiswa',
+        element: (
+          <ProtectedRoute allowedRoles={['DOSEN', 'ADMIN']}>
+            <KelasMahasiswaPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'mahasiswa/:mahasiswaId/profile',
+        element: (
+          <ProtectedRoute allowedRoles={['DOSEN', 'ADMIN']}>
+            <MahasiswaProfilePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'dosen/kelas',
+        element: (
+          <ProtectedRoute allowedRoles={['DOSEN', 'ADMIN']}>
+            <DosenKelasPage />
           </ProtectedRoute>
         ),
       }

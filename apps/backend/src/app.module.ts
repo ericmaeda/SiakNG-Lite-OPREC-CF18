@@ -8,6 +8,7 @@ import { MatakuliahController } from './presentation/controllers/matakuliah.cont
 import { DosenController } from './presentation/controllers/dosen.controller';
 import { EnrollmentController } from './presentation/controllers/enrollment.controller';
 import { IrsController } from './presentation/controllers/irs.controller';
+import { MahasiswaController } from './presentation/controllers/mahasiswa.controller';
 import { UserRepository } from './infrastructure/database/repositories/user.repository';
 import { MataKuliahRepository } from './infrastructure/database/repositories/matakuliah.repository';
 import { DosenRepository } from './infrastructure/database/repositories/dosen.repository';
@@ -23,7 +24,7 @@ import { IRS_REPOSITORY } from './domain/repositories/irs.repository.interface';
 
 @Module({
   imports: [AuthModule, DatabaseModule],
-  controllers: [AppController, AuthController, MatakuliahController, DosenController, EnrollmentController, IrsController],
+  controllers: [AppController, AuthController, MatakuliahController, DosenController, EnrollmentController, IrsController, MahasiswaController],
   providers: [
     AppService, 
     UserRepository, 

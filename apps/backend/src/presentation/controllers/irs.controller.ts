@@ -8,7 +8,7 @@ import { Roles } from '../guards/roles.decorator';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { DrizzleProvider } from 'src/infrastructure/database/drizzle.provider';
 import { eq } from 'drizzle-orm';
-import { mahasiswa, matakuliah } from 'src/infrastructure/database/schema';
+import { mahasiswa, matakuliah, users } from 'src/infrastructure/database/schema';
 
 @ApiTags('IRS - Isian Rencana Studi')
 @ApiBearerAuth()
@@ -170,10 +170,17 @@ export class IrsController {
     ) {
         const userId = req.user.id;  // JWT payload has 'id', not 'userId'
 
-        // Get mahasiswa ID
+        // Get mahasiswa ID with user info (join to get nama)
         const mahasiswaResult = await this.drizzle
-            .select()
+            .select({
+                id: mahasiswa.id,
+                npm: mahasiswa.npm,
+                semester: mahasiswa.semester,
+                maxSks: mahasiswa.maxSks,
+                userNama: users.nama,
+            })
             .from(mahasiswa)
+            .leftJoin(users, eq(mahasiswa.userId, users.id))
             .where(eq(mahasiswa.userId, userId))
             .limit(1);
         
@@ -200,7 +207,7 @@ export class IrsController {
         return {
             mahasiswa: {
                 npm: mahasiswaData.npm,
-                nama: mahasiswaData.npm,
+                nama: mahasiswaData.userNama || mahasiswaData.npm,  // From users table via join
                 semester: mahasiswaData.semester,
                 maxSks: mahasiswaData.maxSks || 24,
             },
