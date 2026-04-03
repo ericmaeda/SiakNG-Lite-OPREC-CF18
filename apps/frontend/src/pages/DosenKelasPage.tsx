@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { MataKuliah } from '@siakng/types'
+import { toast } from '@/components/toast'
 
 const colors = {
   primary: '#FFD700',
@@ -21,8 +22,10 @@ export function DosenKelasPage() {
   const [kelasList, setKelasList] = useState<any[]>([])
   const [matakuliahList, setMatakuliahList] = useState<MataKuliah[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  
+  // Delete confirmation modal
+  const [deleteConfirmData, setDeleteConfirmData] = useState<{ id: string; nama: string; matkul: string } | null>(null)
   
   // Create kelas modal
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -44,7 +47,6 @@ export function DosenKelasPage() {
   const loadKelas = async () => {
     try {
       setIsLoading(true)
-      setError('')
       const [kelasData, matakuliahData] = await Promise.all([
         api.getDosenMyKelas(),
         api.getMataKuliah()
@@ -52,22 +54,31 @@ export function DosenKelasPage() {
       setKelasList(kelasData)
       setMatakuliahList(matakuliahData)
     } catch (err: any) {
-      setError(err.message || 'Gagal memuat daftar kelas')
+      toast(err.message || 'Gagal memuat daftar kelas', 'error')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleDeleteKelas = async (kelasId: string, kelasNama: string, matkulNama: string) => {
-    if (!confirm(`Hapus kelas "${kelasNama}" dari "${matkulNama}"?\n\nMahasiswa yang sudah enroll akan terlepas dari kelas ini.`)) return
+  const handleDeleteClick = (kelas: any) => {
+    setDeleteConfirmData({ 
+      id: kelas.id, 
+      nama: kelas.nama, 
+      matkul: kelas.mataKuliahNama 
+    })
+  }
+  
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirmData) return
     
     try {
-      setDeletingId(kelasId)
-      setError('')
-      await api.deleteKelas(kelasId)
-      setKelasList(kelasList.filter(k => k.id !== kelasId))
+      setDeletingId(deleteConfirmData.id)
+      await api.deleteKelas(deleteConfirmData.id)
+      setKelasList(kelasList.filter(k => k.id !== deleteConfirmData.id))
+      setDeleteConfirmData(null)
+      toast('Kelas berhasil dihapus', 'success')
     } catch (err: any) {
-      setError(err.message || 'Gagal menghapus kelas')
+      toast(err.message || 'Gagal menghapus kelas', 'error')
     } finally {
       setDeletingId(null)
     }
@@ -75,13 +86,12 @@ export function DosenKelasPage() {
 
   const handleCreateKelas = async () => {
     if (!newKelas.mataKuliahId) {
-      setError('Pilih mata kuliah terlebih dahulu')
+      toast('Pilih mata kuliah terlebih dahulu', 'warning')
       return
     }
     
     try {
       setCreating(true)
-      setError('')
       
       // Create kelas
       await api.createKelas({
@@ -106,8 +116,9 @@ export function DosenKelasPage() {
         ruangan: ''
       })
       await loadKelas()
+      toast('Kelas berhasil dibuat', 'success')
     } catch (err: any) {
-      setError(err.message || 'Gagal membuat kelas')
+      toast(err.message || 'Gagal membuat kelas', 'error')
     } finally {
       setCreating(false)
     }
@@ -149,12 +160,6 @@ export function DosenKelasPage() {
             Daftar kelas yang Anda ampu
           </p>
         </div>
-
-        {error && (
-          <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#5C2020', border: `1px solid ${colors.danger}` }}>
-            <p className="text-white">{error}</p>
-          </div>
-        )}
 
         {/* Create Kelas Modal */}
         {showCreateModal && (
@@ -370,7 +375,7 @@ export function DosenKelasPage() {
                           Lihat Mahasiswa ({kelas.currentEnrollment})
                         </Button>
                         <Button
-                          onClick={() => handleDeleteKelas(kelas.id, kelas.nama, kelas.mataKuliahNama)}
+                          onClick={() => handleDeleteClick(kelas)}
                           disabled={deletingId === kelas.id}
                           className="px-4 py-2 rounded-lg font-medium"
                           style={{ 
@@ -390,6 +395,56 @@ export function DosenKelasPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/70"
+            onClick={() => setDeleteConfirmData(null)}
+          />
+          {/* Modal Content */}
+          <Card className="relative w-full max-w-sm mx-4" style={{ backgroundColor: '#2A2A2A', border: `2px solid ${colors.danger}` }}>
+            <CardContent className="p-6 text-center">
+              <div className="text-5xl mb-4">🗑️</div>
+              <h3 className="text-xl font-bold mb-2" style={{ color: colors.danger }}>
+                Hapus Kelas?
+              </h3>
+              <p className="text-gray-400 mb-6">
+                Anda akan menghapus kelas <span className="text-white font-medium">{deleteConfirmData.nama}</span> 
+                dari mata kuliah <span className="text-white font-medium">{deleteConfirmData.matkul}</span>.
+                Mahasiswa yang sudah enroll akan terlepas dari kelas ini.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setDeleteConfirmData(null)}
+                  className="flex-1 py-2 rounded-lg font-medium"
+                  style={{ 
+                    backgroundColor: '#4A4A4A', 
+                    color: 'white',
+                    border: 'none'
+                  }}
+                >
+                  Batal
+                </Button>
+                <Button
+                  onClick={handleDeleteConfirm}
+                  disabled={deletingId === deleteConfirmData.id}
+                  className="flex-1 py-2 rounded-lg font-medium"
+                  style={{ 
+                    backgroundColor: colors.danger, 
+                    color: 'white',
+                    border: 'none'
+                  }}
+                >
+                  {deletingId === deleteConfirmData.id ? 'Menghapus...' : 'Hapus'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

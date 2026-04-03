@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import type { IrsSummary } from '@siakng/types'
 import { JadwalGrid } from '@/components/jadwal-view'
+import { toast } from '@/components/toast'
 
 const colors = {
   primary: '#FFD700',
@@ -19,7 +20,6 @@ export function IrsPage() {
   const navigate = useNavigate()
   const [irsData, setIrsData] = useState<IrsSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
   const [unenrollingId, setUnenrollingId] = useState<string | null>(null)
   const [confirmUnenroll, setConfirmUnenroll] = useState<{ kelasId: string; nama: string } | null>(null)
 
@@ -39,11 +39,10 @@ export function IrsPage() {
   const loadIrs = async () => {
     try {
       setIsLoading(true)
-      setError('')
       const data = await api.getMyIrs()
       setIrsData(data)
     } catch (err: any) {
-      setError(err.message || 'Gagal memuat IRS')
+      toast(err.message || 'Gagal memuat IRS', 'error')
     } finally {
       setIsLoading(false)
     }
@@ -61,8 +60,9 @@ export function IrsPage() {
       setConfirmUnenroll(null)
       await api.unenrollFromKelas(confirmUnenroll.kelasId)
       await loadIrs() // Refresh data
+      toast('Mata kuliah berhasil dilepas dari IRS', 'success')
     } catch (err: any) {
-      setError(err.message || 'Gagal melepas mata kuliah')
+      toast(err.message || 'Gagal melepas mata kuliah', 'error')
     } finally {
       setUnenrollingId(null)
     }
@@ -152,12 +152,6 @@ export function IrsPage() {
             </Button>
           </div>
         </div>
-
-        {error && (
-          <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#5C2020', border: `1px solid ${colors.danger}` }}>
-            <p className="text-white">{error}</p>
-          </div>
-        )}
 
         {/* Confirmation Dialog */}
         {confirmUnenroll && (
@@ -337,6 +331,54 @@ export function IrsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Unenroll Confirmation Modal */}
+      {confirmUnenroll && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/70"
+            onClick={() => setConfirmUnenroll(null)}
+          />
+          {/* Modal Content */}
+          <Card className="relative w-full max-w-sm mx-4" style={{ backgroundColor: '#2A2A2A', border: `2px solid ${colors.danger}` }}>
+            <CardContent className="p-6 text-center">
+              <div className="text-5xl mb-4">📖</div>
+              <h3 className="text-xl font-bold mb-2" style={{ color: colors.danger }}>
+                Lepas Mata Kuliah?
+              </h3>
+              <p className="text-gray-400 mb-6">
+                Anda akan melepas mata kuliah <span className="text-white font-medium">{confirmUnenroll.nama}</span> dari IRS Anda.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setConfirmUnenroll(null)}
+                  className="flex-1 py-2 rounded-lg font-medium"
+                  style={{ 
+                    backgroundColor: '#4A4A4A', 
+                    color: 'white',
+                    border: 'none'
+                  }}
+                >
+                  Batal
+                </Button>
+                <Button
+                  onClick={handleConfirmUnenroll}
+                  disabled={unenrollingId === confirmUnenroll.kelasId}
+                  className="flex-1 py-2 rounded-lg font-medium"
+                  style={{ 
+                    backgroundColor: colors.danger, 
+                    color: 'white',
+                    border: 'none'
+                  }}
+                >
+                  {unenrollingId === confirmUnenroll.kelasId ? 'Melepas...' : 'Lepas'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

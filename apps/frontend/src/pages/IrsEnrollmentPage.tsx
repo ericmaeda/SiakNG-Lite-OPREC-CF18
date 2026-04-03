@@ -4,6 +4,7 @@ import { api } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import type { MataKuliah, IrsSummary, Kelas } from '@siakng/types'
+import { toast } from '@/components/toast'
 
 const colors = {
   primary: '#FFD700',
@@ -20,9 +21,7 @@ export function IrsEnrollmentPage() {
   const [kelasMap, setKelasMap] = useState<Record<string, Kelas[]>>({})
   const [irsData, setIrsData] = useState<IrsSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
   const [enrollingMatkulId, setEnrollingMatkulId] = useState<string | null>(null)
-  const [enrollSuccess, setEnrollSuccess] = useState<string | null>(null)
   
   // Confirmation state - includes matakuliah AND kelas info
   const [confirmData, setConfirmData] = useState<{
@@ -38,7 +37,6 @@ export function IrsEnrollmentPage() {
   const loadInitialData = async () => {
     try {
       setIsLoading(true)
-      setError('')
       
       // Load mata kuliah list (always fresh from API)
       const matakuliah = await api.getMataKuliah()
@@ -76,7 +74,7 @@ export function IrsEnrollmentPage() {
         })
       }
     } catch (err: any) {
-      setError(err.message || 'Gagal memuat data')
+      toast(err.message || 'Gagal memuat data', 'error')
     } finally {
       setIsLoading(false)
     }
@@ -87,8 +85,6 @@ export function IrsEnrollmentPage() {
     console.log('=== handleEnroll ===')
     console.log('matakuliah.id:', matakuliah.id)
     console.log('matakuliah.nama:', matakuliah.nama)
-    
-    setError('')
     
     // Always fetch fresh data from API to get latest kelas (including deleted ones)
     let kelasList: Kelas[] = []
@@ -101,14 +97,14 @@ export function IrsEnrollmentPage() {
       }
     } catch (e: any) {
       console.error('API error:', e)
-      setError('Error: ' + e.message)
+      toast('Error: ' + e.message, 'error')
       return
     }
     
     console.log('Final kelasList:', kelasList)
     
     if (!kelasList || kelasList.length === 0) {
-      setError(`TIDAK ADA KELAS untuk ${matakuliah.nama} (id: ${matakuliah.id}). Hubungi dosen.`)
+      toast(`TIDAK ADA KELAS untuk ${matakuliah.nama}. Hubungi dosen.`, 'warning')
       return
     }
     
@@ -150,7 +146,6 @@ export function IrsEnrollmentPage() {
     
     try {
       setEnrollingMatkulId(matakuliah.id)
-      setError('')
       
       const currentDate = new Date()
       const currentYear = currentDate.getFullYear()
@@ -166,13 +161,12 @@ export function IrsEnrollmentPage() {
         tahunAkademik,
       })
       
-      setEnrollSuccess(`${matakuliah.nama} berhasil ditambahkan ke IRS!`)
+      toast(`${matakuliah.nama} berhasil ditambahkan ke IRS!`, 'success')
       setConfirmData(null)
       await loadInitialData()
-      setTimeout(() => setEnrollSuccess(null), 3000)
       
     } catch (err: any) {
-      setError(err.message || 'Gagal mengambil mata kuliah')
+      toast(err.message || 'Gagal mengambil mata kuliah', 'error')
     } finally {
       setEnrollingMatkulId(null)
     }
@@ -287,158 +281,161 @@ export function IrsEnrollmentPage() {
           </CardContent>
         </Card>
 
-        {/* Success */}
-        {enrollSuccess && (
-          <div className="mb-6 p-4 rounded-lg flex items-center gap-3" 
-            style={{ backgroundColor: '#1B3D1B', border: `1px solid ${colors.success}` }}>
-            <span className="text-2xl">✓</span>
-            <p className="text-white font-medium">{enrollSuccess}</p>
-          </div>
-        )}
-
-        {/* Error */}
-        {error && (
-          <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#5C2020', border: `1px solid ${colors.danger}` }}>
-            <p className="text-white">{error}</p>
-          </div>
-        )}
-
-        {/* Confirmation Dialog */}
+        {/* Confirmation Modal */}
         {confirmData && (
-          <Card className="mb-6" style={{ backgroundColor: '#2A2A2A', border: `2px solid ${colors.primary}` }}>
-            <CardContent className="p-6">
-              <h3 className="text-xl font-bold mb-4" style={{ color: colors.primary }}>
-                Konfirmasi Pengambilan Mata Kuliah
-              </h3>
-              <div className="space-y-3 mb-6">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Mata Kuliah</span>
-                  <span className="text-white font-medium">{confirmData.matakuliah.nama}</span>
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-black/70"
+              onClick={() => setConfirmData(null)}
+            />
+            {/* Modal Content */}
+            <Card className="relative w-full max-w-md mx-4" style={{ backgroundColor: '#2A2A2A', border: `2px solid ${colors.primary}` }}>
+              <CardContent className="p-6">
+                <h3 className="text-xl font-bold mb-4" style={{ color: colors.primary }}>
+                  Konfirmasi Pengambilan Mata Kuliah
+                </h3>
+                <div className="space-y-3 mb-6">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Mata Kuliah</span>
+                    <span className="text-white font-medium">{confirmData.matakuliah.nama}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Kode</span>
+                    <span className="text-white">{confirmData.matakuliah.kode}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">SKS</span>
+                    <span className="text-white">{confirmData.matakuliah.sks} SKS</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Kelas</span>
+                    <span className="text-white">{confirmData.kelas.nama}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Jadwal</span>
+                    <span className="text-white">
+                      {confirmData.kelas.hari || '-'} {confirmData.kelas.jamMulai || '-'} - {confirmData.kelas.jamSelesai || '-'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Ruangan</span>
+                    <span className="text-white">{confirmData.kelas.ruangan || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Kuota</span>
+                    <span className="text-white">{confirmData.kelas.currentEnrollment || 0}/{confirmData.kelas.quota}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Kode</span>
-                  <span className="text-white">{confirmData.matakuliah.kode}</span>
+                <p className="text-gray-300 mb-6">
+                  Apakah Anda yakin ingin mengambil mata kuliah ini?
+                </p>
+                <div className="flex gap-4">
+                  <Button
+                    onClick={() => setConfirmData(null)}
+                    className="flex-1 py-3 rounded-lg font-medium"
+                    style={{ 
+                      backgroundColor: '#4A4A4A', 
+                      color: 'white',
+                      border: 'none'
+                    }}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    onClick={handleConfirmEnroll}
+                    disabled={enrollingMatkulId === confirmData.matakuliah.id}
+                    className="flex-1 py-3 rounded-lg font-medium"
+                    style={{ 
+                      backgroundColor: colors.primary, 
+                      color: colors.secondary,
+                      border: 'none'
+                    }}
+                  >
+                    {enrollingMatkulId === confirmData.matakuliah.id ? 'Mengambil...' : 'Ya, Ambil'}
+                  </Button>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">SKS</span>
-                  <span className="text-white">{confirmData.matakuliah.sks} SKS</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Kelas</span>
-                  <span className="text-white">{confirmData.kelas.nama}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Jadwal</span>
-                  <span className="text-white">
-                    {confirmData.kelas.hari || '-'} {confirmData.kelas.jamMulai || '-'} - {confirmData.kelas.jamSelesai || '-'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Ruangan</span>
-                  <span className="text-white">{confirmData.kelas.ruangan || '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Kuota</span>
-                  <span className="text-white">{confirmData.kelas.currentEnrollment || 0}/{confirmData.kelas.quota}</span>
-                </div>
-              </div>
-              <p className="text-gray-300 mb-6">
-                Apakah Anda yakin ingin mengambil mata kuliah ini?
-              </p>
-              <div className="flex gap-4">
-                <Button
-                  onClick={() => setConfirmData(null)}
-                  className="flex-1 py-3 rounded-lg font-medium"
-                  style={{ 
-                    backgroundColor: '#4A4A4A', 
-                    color: 'white',
-                    border: 'none'
-                  }}
-                >
-                  Batal
-                </Button>
-                <Button
-                  onClick={handleConfirmEnroll}
-                  disabled={enrollingMatkulId === confirmData.matakuliah.id}
-                  className="flex-1 py-3 rounded-lg font-medium"
-                  style={{ 
-                    backgroundColor: colors.primary, 
-                    color: colors.secondary,
-                    border: 'none'
-                  }}
-                >
-                  {enrollingMatkulId === confirmData.matakuliah.id ? 'Mengambil...' : 'Ya, Ambil'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Kelas Selection Modal */}
         {selectedMatakuliahForSelection && kelasOptionsForSelection.length > 0 && (
-          <Card className="mb-6" style={{ backgroundColor: '#2A2A2A', border: `2px solid ${colors.tertiary}` }}>
-            <CardContent className="p-6">
-              <h3 className="text-xl font-bold mb-2" style={{ color: colors.tertiary }}>
-                Pilih Kelas untuk {selectedMatakuliahForSelection.nama}
-              </h3>
-              <p className="text-gray-400 text-sm mb-4">
-                Terdapat {kelasOptionsForSelection.length} kelas tersedia. Pilih salah satu:
-              </p>
-              <div className="space-y-3">
-                {kelasOptionsForSelection.map(kelas => {
-                  const isFullKelas = (kelas.currentEnrollment || 0) >= kelas.quota
-                  return (
-                    <div 
-                      key={kelas.id}
-                      className="p-4 rounded-lg flex items-center justify-between"
-                      style={{ backgroundColor: '#3A3A3A' }}
-                    >
-                      <div>
-                        <div className="flex items-center gap-3 mb-1">
-                          <span className="font-bold text-white">Kelas {kelas.nama}</span>
-                          <span className={`px-2 py-0.5 rounded text-xs ${isFullKelas ? 'bg-red-900 text-red-300' : 'bg-green-900 text-green-300'}`}>
-                            {kelas.currentEnrollment || 0}/{kelas.quota} mhs
-                          </span>
-                        </div>
-                        <div className="text-sm text-gray-400">
-                          {kelas.hari || '-'} {kelas.jamMulai || '-'} - {kelas.jamSelesai || '-'}
-                          {kelas.ruangan && ` • ${kelas.ruangan}`}
-                        </div>
-                      </div>
-                      <Button
-                        onClick={() => handleSelectKelas(kelas)}
-                        disabled={isFullKelas}
-                        className="px-4 py-2 rounded-lg font-medium"
-                        style={{ 
-                          backgroundColor: isFullKelas ? '#666' : colors.primary, 
-                          color: colors.secondary,
-                          border: 'none'
-                        }}
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-black/70"
+              onClick={() => {
+                setSelectedMatakuliahForSelection(null)
+                setKelasOptionsForSelection([])
+              }}
+            />
+            {/* Modal Content */}
+            <Card className="relative w-full max-w-md mx-4" style={{ backgroundColor: '#2A2A2A', border: `2px solid ${colors.tertiary}` }}>
+              <CardContent className="p-6">
+                <h3 className="text-xl font-bold mb-2" style={{ color: colors.tertiary }}>
+                  Pilih Kelas untuk {selectedMatakuliahForSelection.nama}
+                </h3>
+                <p className="text-gray-400 text-sm mb-4">
+                  Terdapat {kelasOptionsForSelection.length} kelas tersedia. Pilih salah satu:
+                </p>
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {kelasOptionsForSelection.map(kelas => {
+                    const isFullKelas = (kelas.currentEnrollment || 0) >= kelas.quota
+                    return (
+                      <div 
+                        key={kelas.id}
+                        className="p-4 rounded-lg flex items-center justify-between"
+                        style={{ backgroundColor: '#3A3A3A' }}
                       >
-                        {isFullKelas ? 'Penuh' : 'Pilih'}
-                      </Button>
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="mt-4">
-                <Button
-                  onClick={() => {
-                    setSelectedMatakuliahForSelection(null)
-                    setKelasOptionsForSelection([])
-                  }}
-                  className="w-full py-2 rounded-lg font-medium"
-                  style={{ 
-                    backgroundColor: '#4A4A4A', 
-                    color: 'white',
-                    border: 'none'
-                  }}
-                >
-                  Batal
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                        <div>
+                          <div className="flex items-center gap-3 mb-1">
+                            <span className="font-bold text-white">Kelas {kelas.nama}</span>
+                            <span className={`px-2 py-0.5 rounded text-xs ${isFullKelas ? 'bg-red-900 text-red-300' : 'bg-green-900 text-green-300'}`}>
+                              {kelas.currentEnrollment || 0}/{kelas.quota} mhs
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-400">
+                            {kelas.hari || '-'} {kelas.jamMulai || '-'} - {kelas.jamSelesai || '-'}
+                            {kelas.ruangan && ` • ${kelas.ruangan}`}
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() => handleSelectKelas(kelas)}
+                          disabled={isFullKelas}
+                          className="px-4 py-2 rounded-lg font-medium"
+                          style={{ 
+                            backgroundColor: isFullKelas ? '#666' : colors.primary, 
+                            color: colors.secondary,
+                            border: 'none'
+                          }}
+                        >
+                          {isFullKelas ? 'Penuh' : 'Pilih'}
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="mt-4">
+                  <Button
+                    onClick={() => {
+                      setSelectedMatakuliahForSelection(null)
+                      setKelasOptionsForSelection([])
+                    }}
+                    className="w-full py-2 rounded-lg font-medium"
+                    style={{ 
+                      backgroundColor: '#4A4A4A', 
+                      color: 'white',
+                      border: 'none'
+                    }}
+                  >
+                    Batal
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Mata Kuliah List */}

@@ -76,6 +76,10 @@ export class JadwalKelasRepository implements IJadwalKelasRepository {
     /**
      * Checks if enrolling in targetKelas would cause schedule conflict with existing enrollments
      * Returns conflicting jadwal if overlap found, null otherwise
+     * 
+     * Checks both:
+     * - jadwal_kelas table (new multi-schedule system)
+     * - kelas table's direct hari/jam_mulai/jam_selesai fields (legacy)
      */
     async findConflictingJadwal(
         mahasiswaId: string,
@@ -84,11 +88,30 @@ export class JadwalKelasRepository implements IJadwalKelasRepository {
         targetKelasId: string,
         targetJadwalId?: string
     ): Promise<any | null> {
-        // Get all jadwal for the target kelas
+        // Get the target kelas's direct schedule (hari, jam_mulai, jam_selesai from kelas table)
+        const targetKelasResult = await this.drizzle
+            .select({
+                id: kelas.id,
+                nama: kelas.nama,
+                hari: kelas.hari,
+                jamMulai: kelas.jamMulai,
+                jamSelesai: kelas.jamSelesai,
+            })
+            .from(kelas)
+            .where(eq(kelas.id, targetKelasId))
+            .limit(1);
+        
+        if (targetKelasResult.length === 0) {
+            return null;
+        }
+        
+        const targetKelas = targetKelasResult[0];
+        
+        // Get all jadwal_kelas for the target kelas
         const targetJadwals = await this.findByKelasId(targetKelasId);
         
         // If targetJadwalId provided, exclude it from conflict check (when updating)
-        const checkTargets = targetJadwalId
+        const checkJadwals = targetJadwalId
             ? targetJadwals.filter(j => j.id !== targetJadwalId)
             : targetJadwals;
 
@@ -99,6 +122,9 @@ export class JadwalKelasRepository implements IJadwalKelasRepository {
                 irsStatus: irs.status,
                 irsKelasId: irs.kelasId,
                 kelasNama: kelas.nama,
+                kelasHari: kelas.hari,
+                kelasJamMulai: kelas.jamMulai,
+                kelasJamSelesai: kelas.jamSelesai,
                 mataKuliahId: kelas.mataKuliahId,
                 mataKuliahKode: matakuliah.kode,
                 mataKuliahNama: matakuliah.nama,
@@ -113,32 +139,96 @@ export class JadwalKelasRepository implements IJadwalKelasRepository {
                 eq(irs.status, 'aktif')
             ));
 
-        // Check each target jadwal against each existing jadwal
-        for (const targetJadwal of checkTargets) {
-            const targetDayNum = DAY_MAP[targetJadwal.hari];
-            if (!targetDayNum) continue;
+        // Check against each existing enrollment
+        for (const enrollment of existingEnrollments) {
+            // Skip if same kelas
+            if (enrollment.irsKelasId === targetKelasId) continue;
 
-            for (const enrollment of existingEnrollments) {
-                // Skip if same kelas (shouldn't happen, but safety check)
-                if (enrollment.irsKelasId === targetKelasId) continue;
+            // Check 1: Compare with target kelas's direct schedule (from kelas table)
+            if (targetKelas.hari && targetKelas.jamMulai && targetKelas.jamSelesai) {
+                if (enrollment.kelasHari && enrollment.kelasJamMulai && enrollment.kelasJamSelesai) {
+                    const targetDayNum = DAY_MAP[targetKelas.hari];
+                    const existingDayNum = DAY_MAP[enrollment.kelasHari];
+                    
+                    if (targetDayNum && existingDayNum && targetDayNum === existingDayNum) {
+                        if (isTimeOverlap(
+                            targetKelas.jamMulai,
+                            targetKelas.jamSelesai,
+                            enrollment.kelasJamMulai,
+                            enrollment.kelasJamSelesai
+                        )) {
+                            return {
+                                conflictingWith: {
+                                    hari: enrollment.kelasHari,
+                                    jamMulai: enrollment.kelasJamMulai,
+                                    jamSelesai: enrollment.kelasJamSelesai,
+                                    kelas: enrollment.kelasNama,
+                                    mataKuliah: {
+                                        kode: enrollment.mataKuliahKode,
+                                        nama: enrollment.mataKuliahNama,
+                                    },
+                                },
+                                targetJadwal: {
+                                    hari: targetKelas.hari,
+                                    jamMulai: targetKelas.jamMulai,
+                                    jamSelesai: targetKelas.jamSelesai,
+                                },
+                            };
+                        }
+                    }
+                }
+            }
 
-                // Get all jadwal for the enrolled kelas
+            // Check 2: Compare with target's jadwal_kelas (if any)
+            for (const targetJadwal of checkJadwals) {
+                const targetDayNum = DAY_MAP[targetJadwal.hari];
+                if (!targetDayNum) continue;
+
+                // Compare against existing enrollment's direct schedule (kelas table)
+                if (enrollment.kelasHari && enrollment.kelasJamMulai && enrollment.kelasJamSelesai) {
+                    const existingDayNum = DAY_MAP[enrollment.kelasHari];
+                    
+                    if (existingDayNum && targetDayNum === existingDayNum) {
+                        if (isTimeOverlap(
+                            targetJadwal.jamMulai,
+                            targetJadwal.jamSelesai,
+                            enrollment.kelasJamMulai,
+                            enrollment.kelasJamSelesai
+                        )) {
+                            return {
+                                conflictingWith: {
+                                    hari: enrollment.kelasHari,
+                                    jamMulai: enrollment.kelasJamMulai,
+                                    jamSelesai: enrollment.kelasJamSelesai,
+                                    kelas: enrollment.kelasNama,
+                                    mataKuliah: {
+                                        kode: enrollment.mataKuliahKode,
+                                        nama: enrollment.mataKuliahNama,
+                                    },
+                                },
+                                targetJadwal: {
+                                    hari: targetJadwal.hari,
+                                    jamMulai: targetJadwal.jamMulai,
+                                    jamSelesai: targetJadwal.jamSelesai,
+                                },
+                            };
+                        }
+                    }
+                }
+
+                // Compare against existing enrollment's jadwal_kelas (if any)
                 const existingJadwals = await this.findByKelasId(enrollment.irsKelasId);
-
                 for (const existingJadwal of existingJadwals) {
                     const existingDayNum = DAY_MAP[existingJadwal.hari];
                     if (!existingDayNum) continue;
 
-                    // Same day check
                     if (targetDayNum === existingDayNum) {
-                        // Time overlap check
                         if (isTimeOverlap(
                             targetJadwal.jamMulai,
                             targetJadwal.jamSelesai,
                             existingJadwal.jamMulai,
                             existingJadwal.jamSelesai
                         )) {
-                            // Found conflict!
                             return {
                                 conflictingWith: {
                                     jadwalId: existingJadwal.id,
@@ -160,6 +250,48 @@ export class JadwalKelasRepository implements IJadwalKelasRepository {
                                     ruangan: targetJadwal.ruangan,
                                 },
                             };
+                        }
+                    }
+                }
+            }
+
+            // Check 3: Compare target's direct schedule against existing's jadwal_kelas
+            if (targetKelas.hari && targetKelas.jamMulai && targetKelas.jamSelesai) {
+                const existingJadwals = await this.findByKelasId(enrollment.irsKelasId);
+                const targetDayNum = DAY_MAP[targetKelas.hari];
+                
+                if (targetDayNum) {
+                    for (const existingJadwal of existingJadwals) {
+                        const existingDayNum = DAY_MAP[existingJadwal.hari];
+                        if (!existingDayNum) continue;
+
+                        if (targetDayNum === existingDayNum) {
+                            if (isTimeOverlap(
+                                targetKelas.jamMulai,
+                                targetKelas.jamSelesai,
+                                existingJadwal.jamMulai,
+                                existingJadwal.jamSelesai
+                            )) {
+                                return {
+                                    conflictingWith: {
+                                        jadwalId: existingJadwal.id,
+                                        hari: existingJadwal.hari,
+                                        jamMulai: existingJadwal.jamMulai,
+                                        jamSelesai: existingJadwal.jamSelesai,
+                                        ruangan: existingJadwal.ruangan,
+                                        kelas: enrollment.kelasNama,
+                                        mataKuliah: {
+                                            kode: enrollment.mataKuliahKode,
+                                            nama: enrollment.mataKuliahNama,
+                                        },
+                                    },
+                                    targetJadwal: {
+                                        hari: targetKelas.hari,
+                                        jamMulai: targetKelas.jamMulai,
+                                        jamSelesai: targetKelas.jamSelesai,
+                                    },
+                                };
+                            }
                         }
                     }
                 }

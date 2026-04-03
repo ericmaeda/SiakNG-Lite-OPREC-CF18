@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import type { MataKuliah } from '@siakng/types'
+import { toast } from '@/components/toast'
 
 const colors = {
   primary: '#FFD700',
@@ -20,8 +21,10 @@ export function Matakuliah() {
   const navigate = useNavigate()
   const [matakuliah, setMatakuliah] = useState<MataKuliah[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  
+  // Delete confirmation modal
+  const [deleteConfirmData, setDeleteConfirmData] = useState<MataKuliah | null>(null)
 
   const isDosen = user?.role === 'DOSEN'
 
@@ -32,25 +35,30 @@ export function Matakuliah() {
   const loadMataKuliah = async () => {
     try {
       setIsLoading(true)
-      setError('')
       const data = await api.getMataKuliah() as MataKuliah[]
       setMatakuliah(data)
     } catch (err: any) {
-      setError(err.message || 'Gagal memuat mata kuliah')
+      toast(err.message || 'Gagal memuat mata kuliah', 'error')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleDelete = async (mk: MataKuliah) => {
-    if (!confirm(`Hapus mata kuliah "${mk.nama}"?`)) return
+  const handleDeleteClick = (mk: MataKuliah) => {
+    setDeleteConfirmData(mk)
+  }
+  
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirmData) return
     
     try {
-      setDeletingId(mk.id)
-      await api.deleteMataKuliah(mk.id)
-      setMatakuliah(matakuliah.filter(m => m.id !== mk.id))
+      setDeletingId(deleteConfirmData.id)
+      await api.deleteMataKuliah(deleteConfirmData.id)
+      setMatakuliah(matakuliah.filter(m => m.id !== deleteConfirmData.id))
+      setDeleteConfirmData(null)
+      toast('Mata kuliah berhasil dihapus', 'success')
     } catch (err: any) {
-      setError(err.message || 'Gagal menghapus mata kuliah')
+      toast(err.message || 'Gagal menghapus mata kuliah', 'error')
     } finally {
       setDeletingId(null)
     }
@@ -117,12 +125,6 @@ export function Matakuliah() {
       </div>
 
       <div className="max-w-6xl mx-auto px-8 py-8">
-        {error && (
-          <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: '#5C2020', border: `1px solid ${colors.danger}` }}>
-            <p className="text-white">{error}</p>
-          </div>
-        )}
-
         {matakuliah.length === 0 ? (
           <Card style={{ backgroundColor: '#2A2A2A', border: 'none' }}>
             <CardContent className="p-12 text-center">
@@ -176,7 +178,7 @@ export function Matakuliah() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  handleDelete(mk)
+                                  handleDeleteClick(mk)
                                 }}
                                 disabled={deletingId === mk.id}
                                 className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-colors"
@@ -219,6 +221,55 @@ export function Matakuliah() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/70"
+            onClick={() => setDeleteConfirmData(null)}
+          />
+          {/* Modal Content */}
+          <Card className="relative w-full max-w-sm mx-4" style={{ backgroundColor: '#2A2A2A', border: `2px solid ${colors.danger}` }}>
+            <CardContent className="p-6 text-center">
+              <div className="text-5xl mb-4">🗑️</div>
+              <h3 className="text-xl font-bold mb-2" style={{ color: colors.danger }}>
+                Hapus Mata Kuliah?
+              </h3>
+              <p className="text-gray-400 mb-6">
+                Anda akan menghapus mata kuliah <span className="text-white font-medium">{deleteConfirmData.nama}</span>. 
+                Semua kelas dan enrollment mahasiswa juga akan dihapus.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setDeleteConfirmData(null)}
+                  className="flex-1 py-2 rounded-lg font-medium"
+                  style={{ 
+                    backgroundColor: '#4A4A4A', 
+                    color: 'white',
+                    border: 'none'
+                  }}
+                >
+                  Batal
+                </Button>
+                <Button
+                  onClick={handleDeleteConfirm}
+                  disabled={deletingId === deleteConfirmData.id}
+                  className="flex-1 py-2 rounded-lg font-medium"
+                  style={{ 
+                    backgroundColor: colors.danger, 
+                    color: 'white',
+                    border: 'none'
+                  }}
+                >
+                  {deletingId === deleteConfirmData.id ? 'Menghapus...' : 'Hapus'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
