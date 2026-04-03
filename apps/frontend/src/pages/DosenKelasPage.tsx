@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { api } from '@/lib/api'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import type { MataKuliah } from '@siakng/types'
 
 const colors = {
   primary: '#FFD700',
@@ -16,8 +19,23 @@ const colors = {
 export function DosenKelasPage() {
   const navigate = useNavigate()
   const [kelasList, setKelasList] = useState<any[]>([])
+  const [matakuliahList, setMatakuliahList] = useState<MataKuliah[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  
+  // Create kelas modal
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [newKelas, setNewKelas] = useState({
+    mataKuliahId: '',
+    nama: 'A',
+    quota: 30,
+    hari: 'Senin',
+    jamMulai: '08:00',
+    jamSelesai: '10:00',
+    ruangan: ''
+  })
 
   useEffect(() => {
     loadKelas()
@@ -27,12 +45,71 @@ export function DosenKelasPage() {
     try {
       setIsLoading(true)
       setError('')
-      const data = await api.getDosenMyKelas()
-      setKelasList(data)
+      const [kelasData, matakuliahData] = await Promise.all([
+        api.getDosenMyKelas(),
+        api.getMataKuliah()
+      ])
+      setKelasList(kelasData)
+      setMatakuliahList(matakuliahData)
     } catch (err: any) {
       setError(err.message || 'Gagal memuat daftar kelas')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleDeleteKelas = async (kelasId: string, kelasNama: string, matkulNama: string) => {
+    if (!confirm(`Hapus kelas "${kelasNama}" dari "${matkulNama}"?\n\nMahasiswa yang sudah enroll akan terlepas dari kelas ini.`)) return
+    
+    try {
+      setDeletingId(kelasId)
+      setError('')
+      await api.deleteKelas(kelasId)
+      setKelasList(kelasList.filter(k => k.id !== kelasId))
+    } catch (err: any) {
+      setError(err.message || 'Gagal menghapus kelas')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const handleCreateKelas = async () => {
+    if (!newKelas.mataKuliahId) {
+      setError('Pilih mata kuliah terlebih dahulu')
+      return
+    }
+    
+    try {
+      setCreating(true)
+      setError('')
+      
+      // Create kelas
+      await api.createKelas({
+        mataKuliahId: newKelas.mataKuliahId,
+        nama: newKelas.nama,
+        quota: newKelas.quota,
+        ruangan: newKelas.ruangan || undefined,
+        hari: newKelas.hari,
+        jamMulai: newKelas.jamMulai,
+        jamSelesai: newKelas.jamSelesai
+      })
+      
+      // Close modal and refresh
+      setShowCreateModal(false)
+      setNewKelas({
+        mataKuliahId: '',
+        nama: 'A',
+        quota: 30,
+        hari: 'Senin',
+        jamMulai: '08:00',
+        jamSelesai: '10:00',
+        ruangan: ''
+      })
+      await loadKelas()
+    } catch (err: any) {
+      setError(err.message || 'Gagal membuat kelas')
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -79,18 +156,151 @@ export function DosenKelasPage() {
           </div>
         )}
 
+        {/* Create Kelas Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <Card className="w-full max-w-md mx-4" style={{ backgroundColor: '#2A2A2A' }}>
+              <CardHeader>
+                <CardTitle className="text-xl font-bold" style={{ color: colors.primary }}>
+                  Buat Kelas Baru
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Mata Kuliah Select */}
+                <div>
+                  <Label className="text-gray-300">Mata Kuliah *</Label>
+                  <select
+                    value={newKelas.mataKuliahId}
+                    onChange={(e) => setNewKelas({ ...newKelas, mataKuliahId: e.target.value })}
+                    className="w-full mt-1 p-2 rounded bg-gray-700 text-white border border-gray-600"
+                  >
+                    <option value="">Pilih Mata Kuliah</option>
+                    {matakuliahList.map(mk => (
+                      <option key={mk.id} value={mk.id}>
+                        {mk.kode} - {mk.nama} ({mk.sks} SKS)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Nama Kelas */}
+                <div>
+                  <Label className="text-gray-300">Nama Kelas</Label>
+                  <Input
+                    value={newKelas.nama}
+                    onChange={(e) => setNewKelas({ ...newKelas, nama: e.target.value })}
+                    placeholder="A"
+                    className="mt-1 bg-gray-700 text-white border-gray-600"
+                  />
+                </div>
+
+                {/*Quota */}
+                <div>
+                  <Label className="text-gray-300">Kuota</Label>
+                  <Input
+                    type="number"
+                    value={newKelas.quota}
+                    onChange={(e) => setNewKelas({ ...newKelas, quota: parseInt(e.target.value) || 30 })}
+                    className="mt-1 bg-gray-700 text-white border-gray-600"
+                  />
+                </div>
+
+                {/*Hari */}
+                <div>
+                  <Label className="text-gray-300">Hari</Label>
+                  <select
+                    value={newKelas.hari}
+                    onChange={(e) => setNewKelas({ ...newKelas, hari: e.target.value })}
+                    className="w-full mt-1 p-2 rounded bg-gray-700 text-white border border-gray-600"
+                  >
+                    <option value="Senin">Senin</option>
+                    <option value="Selasa">Selasa</option>
+                    <option value="Rabu">Rabu</option>
+                    <option value="Kamis">Kamis</option>
+                    <option value="Jumat">Jumat</option>
+                    <option value="Sabtu">Sabtu</option>
+                  </select>
+                </div>
+
+                {/* Jam Mulai */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-gray-300">Jam Mulai</Label>
+                    <Input
+                      type="time"
+                      value={newKelas.jamMulai}
+                      onChange={(e) => setNewKelas({ ...newKelas, jamMulai: e.target.value })}
+                      className="mt-1 bg-gray-700 text-white border-gray-600"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-300">Jam Selesai</Label>
+                    <Input
+                      type="time"
+                      value={newKelas.jamSelesai}
+                      onChange={(e) => setNewKelas({ ...newKelas, jamSelesai: e.target.value })}
+                      className="mt-1 bg-gray-700 text-white border-gray-600"
+                    />
+                  </div>
+                </div>
+
+                {/* Ruangan */}
+                <div>
+                  <Label className="text-gray-300">Ruangan</Label>
+                  <Input
+                    value={newKelas.ruangan}
+                    onChange={(e) => setNewKelas({ ...newKelas, ruangan: e.target.value })}
+                    placeholder="Ruang 101"
+                    className="mt-1 bg-gray-700 text-white border-gray-600"
+                  />
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    onClick={() => setShowCreateModal(false)}
+                    className="flex-1 py-2 rounded-lg"
+                    style={{ backgroundColor: '#4A4A4A', color: 'white', border: 'none' }}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    onClick={handleCreateKelas}
+                    disabled={creating || !newKelas.mataKuliahId}
+                    className="flex-1 py-2 rounded-lg"
+                    style={{ backgroundColor: colors.primary, color: colors.secondary, border: 'none' }}
+                  >
+                    {creating ? 'Membuat...' : 'Buat Kelas'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Classes List */}
+        <div className="mb-4 flex justify-end">
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="px-6 py-2 rounded-lg font-medium"
+            style={{ backgroundColor: colors.primary, color: colors.secondary, border: 'none' }}
+          >
+            + Buat Kelas Baru
+          </Button>
+        </div>
+
         {!kelasList.length ? (
           <Card style={{ backgroundColor: '#2A2A2A', border: 'none' }}>
             <CardContent className="p-8 text-center">
               <div className="text-6xl mb-4">📚</div>
-              <p className="text-gray-400">Belum ada kelas</p>
+              <p className="text-gray-400 mb-2">Belum ada kelas</p>
+              <p className="text-sm text-gray-500 mb-4">Klik "Buat Kelas Baru" untuk membuat kelas mahasiswa</p>
               <Button
-                onClick={() => navigate('/matakuliah/tambah')}
-                className="mt-4 px-6 py-2 rounded-lg"
+                onClick={() => setShowCreateModal(true)}
+                className="px-6 py-2 rounded-lg"
                 style={{ backgroundColor: colors.primary, color: colors.secondary, border: 'none' }}
               >
-                Tambah Mata Kuliah
+                Buat Kelas Baru
               </Button>
             </CardContent>
           </Card>
@@ -147,7 +357,7 @@ export function DosenKelasPage() {
                         </div>
                       </div>
 
-                      <div className="ml-4">
+                      <div className="ml-4 flex flex-col gap-2">
                         <Button
                           onClick={() => navigate(`/kelas/${kelas.id}/mahasiswa`)}
                           className="px-4 py-2 rounded-lg font-medium"
@@ -158,6 +368,18 @@ export function DosenKelasPage() {
                           }}
                         >
                           Lihat Mahasiswa ({kelas.currentEnrollment})
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteKelas(kelas.id, kelas.nama, kelas.mataKuliahNama)}
+                          disabled={deletingId === kelas.id}
+                          className="px-4 py-2 rounded-lg font-medium"
+                          style={{ 
+                            backgroundColor: colors.danger, 
+                            color: 'white',
+                            border: 'none'
+                          }}
+                        >
+                          {deletingId === kelas.id ? 'Menghapus...' : 'Hapus Kelas'}
                         </Button>
                       </div>
                     </div>

@@ -116,17 +116,8 @@ export class MatakuliahController {
             dosenId: data.dosenId || data.dosisId || req.user.id,
         });
         
-        // Auto-create default kelas "A" for this mata kuliah
-        await this.kelasRepository.create({
-            mataKuliahId: mataKuliah.id,
-            nama: 'A',
-            quota: 40,  // Default quota
-            ruangan: null,
-            hari: null,
-            jamMulai: null,
-            jamSelesai: null,
-            dosenId: data.dosenId || data.dosisId || req.user.id,
-        });
+        // NOTE: Don't auto-create kelas anymore. DOSEN must create kelas manually
+        // through the Kelola Kelas page after creating mata kuliah.
         
         return mataKuliah;
     }

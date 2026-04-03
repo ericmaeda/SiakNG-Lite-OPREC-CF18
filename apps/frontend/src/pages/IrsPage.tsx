@@ -4,6 +4,7 @@ import { api } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import type { IrsSummary } from '@siakng/types'
+import { JadwalGrid } from '@/components/jadwal-view'
 
 const colors = {
   primary: '#FFD700',
@@ -230,6 +231,26 @@ export function IrsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Jadwal Grid - Visual Schedule */}
+        {irsData && irsData.enrollments.length > 0 && (
+          <Card className="mb-8" style={{ backgroundColor: '#2A2A2A', border: 'none' }}>
+            <CardHeader>
+              <CardTitle className="text-xl font-bold" style={{ color: colors.primary }}>
+                Jadwal Mingguan
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <JadwalGrid 
+                  enrollments={irsData.enrollments}
+                  showHeader={true}
+                  onEnrollmentClick={(e) => navigate(`/matakuliah/detail/${e.mataKuliah.id}`)}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* IRS List */}
         <Card style={{ backgroundColor: '#2A2A2A', border: 'none' }}>

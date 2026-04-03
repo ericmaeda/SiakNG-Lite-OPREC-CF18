@@ -7,13 +7,13 @@ export const kelas = pgTable('kelas', {
     id: uuid('id').primaryKey().defaultRandom(),
     mataKuliahId: uuid('mata_kuliah_id')
         .notNull()
-        .references(() => matakuliah.id, { onDelete: 'cascade' }),
-    nama: varchar('nama', { length: 20 }).notNull(), // e.g., "A", "B", "Pagi", "Sore"
-    quota: integer('quota').notNull(), // Kapasitas maksimal mahasiswa
+        .references(() => matakuliah.id, { onDelete: 'cascade' }),  // cascade delete when mata_kuliah deleted
+    nama: varchar('nama', { length: 20 }).notNull(),
+    quota: integer('quota').notNull(),
     ruangan: varchar('ruangan', { length: 50 }),
-    hari: varchar('hari', { length: 10 }), // e.g., "Senin", "Selasa"
-    jamMulai: varchar('jam_mulai', { length: 5 }), // e.g., "08:00"
-    jamSelesai: varchar('jam_selesai', { length: 5 }), // e.g., "10:00"
+    hari: varchar('hari', { length: 10 }),
+    jamMulai: varchar('jam_mulai', { length: 5 }),
+    jamSelesai: varchar('jam_selesai', { length: 5 }),
     dosenId: uuid('dosen_id')
         .notNull()
         .references(() => users.id, { onDelete: 'cascade' }),

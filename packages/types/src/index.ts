@@ -47,6 +47,18 @@ export interface MataKuliah {
   kapasitas?: number;
 }
 
+// Multiple schedule sessions per kelas
+export interface JadwalKelas {
+  id: string;
+  kelasId: string;
+  hari: string; // "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"
+  jamMulai: string; // "08:00"
+  jamSelesai: string; // "10:00"
+  ruangan: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Kelas {
   id: string;
   mataKuliahId: string;
@@ -63,6 +75,8 @@ export interface Kelas {
   currentEnrollment?: number;
   remainingQuota?: number;
   isFull?: boolean;
+  // Multiple schedules (NEW)
+  jadwal?: JadwalKelas[];
   // Joined fields
   mataKuliahKode?: string;
   mataKuliahNama?: string;
@@ -82,6 +96,8 @@ export interface IrsEnrollment {
     hari: string | null;
     jamMulai: string | null;
     jamSelesai: string | null;
+    // Multiple schedules (NEW)
+    jadwal?: JadwalKelas[];
   };
   mataKuliah: {
     id: string;

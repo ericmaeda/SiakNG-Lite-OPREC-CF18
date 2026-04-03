@@ -1,6 +1,6 @@
 {
-  "id": "6b598fb3-05a0-411f-9fc6-6a068835a4a0",
-  "prevId": "76ec59c2-a72a-495f-93cd-3acf12728faa",
+  "id": "9fd30e3c-54d3-47e9-8d2f-31f41da7922e",
+  "prevId": "6b598fb3-05a0-411f-9fc6-6a068835a4a0",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -577,6 +577,84 @@
           "tableTo": "users",
           "columnsFrom": [
             "dosen_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.jadwal_kelas": {
+      "name": "jadwal_kelas",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "kelas_id": {
+          "name": "kelas_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hari": {
+          "name": "hari",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jam_mulai": {
+          "name": "jam_mulai",
+          "type": "varchar(5)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jam_selesai": {
+          "name": "jam_selesai",
+          "type": "varchar(5)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ruangan": {
+          "name": "ruangan",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "jadwal_kelas_kelas_id_kelas_id_fk": {
+          "name": "jadwal_kelas_kelas_id_kelas_id_fk",
+          "tableFrom": "jadwal_kelas",
+          "tableTo": "kelas",
+          "columnsFrom": [
+            "kelas_id"
           ],
           "columnsTo": [
             "id"

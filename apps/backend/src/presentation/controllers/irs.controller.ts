@@ -2,6 +2,7 @@ import { Controller, Post, Delete, Get, Patch, Body, Param, UseGuards, Request, 
 import { Inject } from '@nestjs/common';
 import { IIrsRepository, IRS_REPOSITORY } from 'src/domain/repositories/irs.repository.interface';
 import { IKelasRepository, KELAS_REPOSITORY } from 'src/domain/repositories/kelas.repository.interface';
+import { IJadwalKelasRepository, JADWAL_KELAS_REPOSITORY } from 'src/domain/repositories/jadwal-kelas.repository.interface';
 import { JwtAuthGuard } from 'src/infrastructure/auth/jwt-auth.guard';
 import { RolesGuard } from '../guards/role.guard';
 import { Roles } from '../guards/roles.decorator';
@@ -20,6 +21,8 @@ export class IrsController {
         private readonly irsRepo: IIrsRepository,
         @Inject(KELAS_REPOSITORY)
         private readonly kelasRepo: IKelasRepository,
+        @Inject(JADWAL_KELAS_REPOSITORY)
+        private readonly jadwalRepo: IJadwalKelasRepository,
         @Inject('DRIZZLE')
         private readonly drizzle: ReturnType<typeof DrizzleProvider.useFactory>
     ) {}
@@ -73,13 +76,29 @@ export class IrsController {
             throw new ForbiddenException('Anda sudah terdaftar di mata kuliah ini (kelas lain)!');
         }
 
-        // 5. Check class capacity (quota)
+        // 5. Check schedule overlap (jadwal bentrok)
+        const conflict = await this.jadwalRepo.findConflictingJadwal(
+            mahasiswaId,
+            data.semester,
+            data.tahunAkademik,
+            data.kelasId
+        );
+        if (conflict) {
+            throw new ForbiddenException(
+                `Jadwal bentrok! Kelas yang ingin diambil (${conflict.targetJadwal.hari} ${conflict.targetJadwal.jamMulai}-${conflict.targetJadwal.jamSelesai}) ` +
+                `bertabrakan dengan ${conflict.conflictingWith.mataKuliah.nama} ` +
+                `(${conflict.conflictingWith.hari} ${conflict.conflictingWith.jamMulai}-${conflict.conflictingWith.jamSelesai} di ${conflict.conflictingWith.ruangan || 'ruangan sama'}). ` +
+                `Silakan pilih kelas lain atau jadwal lain.`
+            );
+        }
+
+        // 6. Check class capacity (quota)
         const currentEnrollment = await this.irsRepo.countByKelasId(data.kelasId);
         if (currentEnrollment >= kelas.quota) {
             throw new ForbiddenException('Kapasitas kelas sudah penuh!');
         }
 
-        // 6. Check SKS limit
+        // 7. Check SKS limit
         const totalSks = await this.irsRepo.getTotalSks(mahasiswaId, data.semester, data.tahunAkademik);
         
         // Get SKS of the mata kuliah being enrolled
@@ -346,15 +365,26 @@ export class IrsController {
     async getKelasByMataKuliah(@Param('mataKuliahId') mataKuliahId: string) {
         const kelasList = await this.kelasRepo.findByMataKuliahId(mataKuliahId);
         
-        // Add enrollment count for each kelas
+        // Filter out kelas that don't have proper schedule (hari + jam_mulai + jam_selesai)
+        // These are "dummy" kelas that haven't been set up by DOSEN
+        const validKelasList = kelasList.filter(k => k.hari && k.jamMulai && k.jamSelesai);
+        
+        // If no valid kelas, return empty array (will show "belum ada kelas" to student)
+        if (validKelasList.length === 0) {
+            return [];
+        }
+        
+        // Add enrollment count and jadwal for each kelas
         const kelasWithCount = await Promise.all(
-            kelasList.map(async (k) => {
+            validKelasList.map(async (k) => {
                 const count = await this.irsRepo.countByKelasId(k.id);
+                const jadwalList = await this.jadwalRepo.findByKelasId(k.id);
                 return {
                     ...k,
                     currentEnrollment: count,
                     remainingQuota: k.quota - count,
                     isFull: count >= k.quota,
+                    jadwal: jadwalList, // Multiple schedules per kelas
                 };
             })
         );
@@ -371,11 +401,13 @@ export class IrsController {
         }
         
         const count = await this.irsRepo.countByKelasId(id);
+        const jadwalList = await this.jadwalRepo.findByKelasId(id);
         return {
             ...kelas,
             currentEnrollment: count,
             remainingQuota: kelas.quota - count,
             isFull: count >= kelas.quota,
+            jadwal: jadwalList, // Multiple schedules per kelas
         };
     }
 }
