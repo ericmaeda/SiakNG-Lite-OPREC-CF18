@@ -15,6 +15,20 @@
       "when": 1774859428479,
       "tag": "0001_lumpy_war_machine",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775191897819,
+      "tag": "0003_little_selene",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1775200756083,
+      "tag": "0003_lowly_sebastian_shaw",
+      "breakpoints": true
     }
   ]
 }

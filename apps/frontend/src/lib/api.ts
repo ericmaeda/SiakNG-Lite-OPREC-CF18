@@ -1,4 +1,4 @@
-import type { User, UserRole } from '@siakng/types'
+import type { User, UserRole, MataKuliah, Kelas, IrsSummary, IrsEnrollmentResponse } from '@siakng/types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
@@ -41,12 +41,15 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<T> {
     const token = this.getToken();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    }
+    const headers: Record<string, string> = {};
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Only set Content-Type for requests with body
+    if (options.body && typeof options.body === 'string') {
+      headers['Content-Type'] = 'application/json';
     }
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -114,11 +117,38 @@ class ApiClient {
 
   // Mata Kuliah endpoints
   async getMataKuliah() {
-    return this.request('/matakuliah');
+    return this.request<MataKuliah[]>('/matakuliah');
   }
 
   async getMataKuliahById(id: string) {
-    return this.request(`/matakuliah/${id}`);
+    return this.request<MataKuliah>(`/matakuliah/${id}`);
+  }
+
+  async getMataKuliahDetail(id: string) {
+    return this.request<{
+      mataKuliah: {
+        id: string;
+        kode: string;
+        nama: string;
+        sks: number;
+        semester: number;
+      };
+      dosen: {
+        id: string;
+        nama: string;
+        email: string;
+      } | null;
+      kelas: Array<{
+        id: string;
+        nama: string;
+        quota: number;
+        ruangan: string | null;
+        hari: string | null;
+        jamMulai: string | null;
+        jamSelesai: string | null;
+        currentEnrollment: number;
+      }>;
+    }>(`/matakuliah/detail/${id}`);
   }
 
   async createMataKuliah(data: {
@@ -139,7 +169,7 @@ class ApiClient {
     nama: string
     sks: number
     semester: number
-    dosenId: string
+    dosisId: string
   }>) {
     return this.request(`/matakuliah/${id}`, {
       method: 'PATCH',
@@ -156,6 +186,114 @@ class ApiClient {
   // Dosen endpoints
   async getDosen() {
     return this.request('/dosen');
+  }
+
+  // ============ IRS (Study Plan) Endpoints ============
+
+  // Get student's IRS (Isian Rencana Studi)
+  async getMyIrs(query?: { semester?: number; tahunAkademik?: string }): Promise<IrsSummary> {
+    const params = new URLSearchParams();
+    if (query?.semester) params.append('semester', query.semester.toString());
+    if (query?.tahunAkademik) params.append('tahunAkademik', query.tahunAkademik);
+    const queryString = params.toString();
+    return this.request<IrsSummary>(`/irs/my-irs${queryString ? `?${queryString}` : ''}`);
+  }
+
+  // Enroll to a kelas
+  async enrollToKelas(data: {
+    kelasId: string;
+    semester: number;
+    tahunAkademik: string;
+  }): Promise<IrsEnrollmentResponse> {
+    return this.request<IrsEnrollmentResponse>('/irs/enroll', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Unenroll from a kelas
+  async unenrollFromKelas(kelasId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/irs/unenroll/${kelasId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Get all kelas for a mata kuliah (with enrollment status)
+  async getKelasByMataKuliah(mataKuliahId: string): Promise<Kelas[]> {
+    return this.request<Kelas[]>(`/irs/kelas/mata-kuliah/${mataKuliahId}`);
+  }
+
+  // Get single kelas details
+  async getKelasById(kelasId: string): Promise<Kelas> {
+    return this.request<Kelas>(`/irs/kelas/${kelasId}`);
+  }
+
+  // ============ DOSEN Endpoints for IRS ============
+
+  // Get dosen's classes
+  async getDosenMyKelas(): Promise<Kelas[]> {
+    return this.request<Kelas[]>('/irs/dosen/my-kelas');
+  }
+
+  // Get students in a class
+  async getKelasMahasiswa(kelasId: string): Promise<any[]> {
+    return this.request<any[]>(`/irs/dosen/kelas/${kelasId}/mahasiswa`);
+  }
+
+  // Create a new kelas (Dosen only)
+  async createKelas(data: {
+    mataKuliahId: string;
+    nama: string;
+    quota: number;
+    ruangan?: string;
+    hari?: string;
+    jamMulai?: string;
+    jamSelesai?: string;
+  }): Promise<Kelas> {
+    return this.request<Kelas>('/irs/kelas', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Update a kelas
+  async updateKelas(kelasId: string, data: Partial<{
+    nama: string;
+    quota: number;
+    ruangan: string;
+    hari: string;
+    jamMulai: string;
+    jamSelesai: string;
+  }>): Promise<Kelas> {
+    return this.request<Kelas>(`/irs/kelas/${kelasId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Delete a kelas
+  async deleteKelas(kelasId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/irs/kelas/${kelasId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ============ DOSEN - View Students ============
+
+  // Get mahasiswa profile
+  async getMahasiswaProfile(mahasiswaId: string): Promise<{
+    id: string;
+    npm: string;
+    nama: string;
+    email: string;
+    prodi: string;
+    fakultas: string;
+    angkatan: string;
+    ipk: string;
+    semester: number;
+    maxSks: number;
+  }> {
+    return this.request(`/mahasiswa/${mahasiswaId}/profile`);
   }
 }
 

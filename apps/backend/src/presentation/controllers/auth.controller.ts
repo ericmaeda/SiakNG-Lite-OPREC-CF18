@@ -3,7 +3,9 @@ import { JwtTokenService } from "src/infrastructure/auth/jwt.service";
 import { PasswordService } from "src/infrastructure/auth/password.service";
 import { UserRepository } from "src/infrastructure/database/repositories/user.repository";
 import { USER_REPOSITORY } from "src/domain/repositories/user.repository.interface";
+import { DrizzleProvider } from "src/infrastructure/database/drizzle.provider";
 import { ApiOperation, ApiResponse } from "@nestjs/swagger";
+import { mahasiswa } from "src/infrastructure/database/schema";
 
 @Controller('auth')
 export class AuthController {
@@ -11,7 +13,9 @@ export class AuthController {
         private readonly jwtService: JwtTokenService,
         private readonly passwordService: PasswordService,
         @Inject(USER_REPOSITORY)
-        private readonly userRepository: UserRepository
+        private readonly userRepository: UserRepository,
+        @Inject('DRIZZLE')
+        private readonly drizzle: ReturnType<typeof DrizzleProvider.useFactory>
     ) {}
 
     @ApiOperation({ summary: 'Login user' })
@@ -59,6 +63,11 @@ export class AuthController {
         password: string;
         nama: string;
         role: 'MAHASISWA' | 'DOSEN' | 'ADMIN';
+        // Optional fields for MAHASISWA
+        npm?: string;
+        prodi?: string;
+        fakultas?: string;
+        angkatan?: string;
     }) {
         const existing = await this.userRepository.findByEmail(body.email);
         if (existing) {
@@ -74,6 +83,22 @@ export class AuthController {
             role: body.role,
             isActive: true,
         });
+
+        // Create mahasiswa record if role is MAHASISWA
+        if (body.role === 'MAHASISWA') {
+            await this.drizzle
+                .insert(mahasiswa)
+                .values({
+                    userId: user.id,
+                    npm: body.npm || `A${Date.now().toString().slice(-9)}`, // Auto-generate NPM if not provided
+                    prodi: body.prodi || 'Informatika',
+                    fakultas: body.fakultas || 'FMIPA',
+                    angkatan: body.angkatan || new Date().getFullYear().toString(),
+                    semester: 1,
+                    ipk: '0.00',
+                    maxSks: 24,
+                });
+        }
 
         const token = this.jwtService.generateToken({
             sub: user.id,

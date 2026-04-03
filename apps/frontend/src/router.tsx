@@ -5,6 +5,13 @@ import { DashboardDosen } from './pages/DashboardDosen';
 import { DashboardMahasiswa } from './pages/DashboardMahasiswa';
 import { Matakuliah } from './pages/Matakuliah';
 import { TambahMatakuliah } from './pages/TambahMatakuliah';
+import { EnrollMatkul } from './pages/EnrollmentMatkul';
+import { IrsPage } from './pages/IrsPage';
+import { IrsEnrollmentPage } from './pages/IrsEnrollmentPage';
+import { MataKuliahDetail } from './pages/MataKuliahDetail';
+import { KelasMahasiswaPage } from './pages/KelasMahasiswaPage';
+import { MahasiswaProfilePage } from './pages/MahasiswaProfilePage';
+import { DosenKelasPage } from './pages/DosenKelasPage';
 import { RootLayout } from './layouts/RootLayout';
 import { ProtectedRoute } from './lib/protected-route';
 import { useAuth } from './lib/auth-context';
@@ -75,6 +82,14 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'matakuliah/detail/:id',
+        element: (
+          <ProtectedRoute>
+            <MataKuliahDetail />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: 'matakuliah/tambah',
         element: (
           <ProtectedRoute allowedRoles={['DOSEN', 'ADMIN']}>
@@ -82,6 +97,54 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      {
+        path: 'matakuliah/enroll',
+        element: (
+          <ProtectedRoute allowedRoles={['MAHASISWA']}>
+            <EnrollMatkul />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'irs',
+        element: (
+          <ProtectedRoute allowedRoles={['MAHASISWA']}>
+            <IrsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'irs/enroll',
+        element: (
+          <ProtectedRoute allowedRoles={['MAHASISWA']}>
+            <IrsEnrollmentPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'kelas/:kelasId/mahasiswa',
+        element: (
+          <ProtectedRoute allowedRoles={['DOSEN', 'ADMIN']}>
+            <KelasMahasiswaPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'mahasiswa/:mahasiswaId/profile',
+        element: (
+          <ProtectedRoute allowedRoles={['DOSEN', 'ADMIN']}>
+            <MahasiswaProfilePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'dosen/kelas',
+        element: (
+          <ProtectedRoute allowedRoles={['DOSEN', 'ADMIN']}>
+            <DosenKelasPage />
+          </ProtectedRoute>
+        ),
+      }
     ],
   },
 ]);
