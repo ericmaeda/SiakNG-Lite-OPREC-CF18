@@ -36,7 +36,6 @@ siakng-lite-rev/
 
 - **Authentication**: JWT-based login/register with role-based access
 - **Role-Based Access**:
-  - `ADMIN` — Full system access
   - `DOSEN` — Manage Mata Kuliah (Create, Read, Update, Delete)
   - `MAHASISWA` — View Mata Kuliah (Read only)
 - **Mata Kuliah Management**: CRUD operations for courses (kode, nama, sks, semester, dosen)
