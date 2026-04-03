@@ -1,4 +1,4 @@
-export type UserRole = `'MAHASISWA'` | `'DOSEN'` | `'ADMIN'`;
+export type UserRole = 'MAHASISWA' | 'DOSEN' | 'ADMIN';
 
 export class UserEntity {
   constructor(

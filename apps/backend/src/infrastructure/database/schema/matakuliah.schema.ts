@@ -1,6 +1,7 @@
 import { pgTable, uuid, varchar, integer, timestamp } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './user.schema';
+import { mahasiswa } from './user.schema';
 
 export const matakuliah = pgTable('mata_kuliah', {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -14,7 +15,19 @@ export const matakuliah = pgTable('mata_kuliah', {
         .references(() => users.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    kapasitas: integer('kapasitas').notNull()
 });
+
+export const matakuliah_mahasiswa = pgTable('matakuliah_mahasiswa', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    mata_kuliah_id: uuid('mata_kuliah_id')
+        .notNull()
+        .references(() => matakuliah.id, { onDelete: 'cascade' }),
+    mahasiswa_id: uuid('mahasiswa_id')
+        .notNull()
+        .references(() => mahasiswa.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+})
 
 // Relations
 export const matakuliahRelations = relations(matakuliah, ({ one }) => ({

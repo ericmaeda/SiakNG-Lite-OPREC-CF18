@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, boolean, timestamp, pgEnum} from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, integer, numeric, boolean, timestamp, pgEnum} from 'drizzle-orm/pg-core';
 import {relations} from 'drizzle-orm';
 
 export const userRoleEnum = pgEnum('user_role', ['MAHASISWA', 'DOSEN', 'ADMIN']);
@@ -26,8 +26,9 @@ export const mahasiswa = pgTable('mahasiswa', {
     prodi: varchar('prodi', { length: 50 }).notNull(),
     fakultas: varchar('fakultas', { length: 50 }).notNull(),
     angkatan: varchar('angkatan', { length: 4 }).notNull(),
-    ipk: varchar('ipk', { length: 4 }).notNull().default('0.00'),
-    semester: varchar('semester', { length: 2 }).notNull().default('1')
+    ipk: numeric('ipk', { precision: 3, scale: 2 }).notNull().default('0.00'),
+    semester: integer('semester').notNull().default(1),
+    maxSks: integer('max_sks').notNull().default(24) // Batas maksimal SKS per semester
 });
 
 export const dosen = pgTable('dosen', {
