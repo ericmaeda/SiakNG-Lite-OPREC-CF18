@@ -12,7 +12,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "deploy:vercel": "node scripts/vercel-build.js"
+    "prebuild": "node scripts/copy-packages.js",
+    "deploy:vercel": "pnpm run build"
   },
   "keywords": [],
   "author": "",
@@ -44,7 +45,6 @@
     "@nestjs/schematics": "^11.0.9",
     "@nestjs/testing": "^11.1.17",
     "drizzle-kit": "^0.31.10",
-    "esbuild": "^0.24.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3"
