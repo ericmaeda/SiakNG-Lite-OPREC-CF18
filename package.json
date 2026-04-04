@@ -9,7 +9,8 @@
     "lint": "turbo run lint",
     "db:generate": "turbo run db:generate",
     "db:migrate": "turbo run db:migrate",
-    "db:studio": "cd infra && pnpm drizzle-kit studio"
+    "db:studio": "cd infra && pnpm drizzle-kit studio",
+    "vercel:build": "pnpm --filter @siakng/backend build && node scripts/fix-vercel-paths.js"
   },
   "devDependencies": {
     "turbo": "^2.0.0",

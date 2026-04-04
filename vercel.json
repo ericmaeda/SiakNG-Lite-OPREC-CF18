@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd apps/backend && pnpm run build",
+  "installCommand": "pnpm install",
+  "outputDirectory": "apps/backend/dist",
+  "regions": ["singapore"]
+}
