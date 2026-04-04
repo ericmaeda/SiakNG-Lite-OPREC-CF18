@@ -138,11 +138,38 @@ export class JadwalKelasRepository implements IJadwalKelasRepository {
                 eq(irs.tahunAkademik, tahunAkademik),
                 eq(irs.status, 'aktif')
             ));
+        
+        // FIX N+1: Pre-fetch all jadwal_kelas for all existing enrollments in a single query
+        const existingKelasIds = [...new Set(existingEnrollments.map(e => e.irsKelasId))];
+        let existingJadwalsMap = new Map<string, typeof targetJadwals>();
+        
+        if (existingKelasIds.length > 0) {
+            const allExistingJadwals = await this.drizzle
+                .select({
+                    id: jadwalKelas.id,
+                    kelasId: jadwalKelas.kelasId,
+                    hari: jadwalKelas.hari,
+                    jamMulai: jadwalKelas.jamMulai,
+                    jamSelesai: jadwalKelas.jamSelesai,
+                    ruangan: jadwalKelas.ruangan,
+                })
+                .from(jadwalKelas)
+                .where(sql`${jadwalKelas.kelasId} IN ${existingKelasIds}`);
+            
+            for (const j of allExistingJadwals) {
+                const existing = existingJadwalsMap.get(j.kelasId) || [];
+                existing.push(j);
+                existingJadwalsMap.set(j.kelasId, existing);
+            }
+        }
 
         // Check against each existing enrollment
         for (const enrollment of existingEnrollments) {
             // Skip if same kelas
             if (enrollment.irsKelasId === targetKelasId) continue;
+
+            // Get existing jadwal for this enrollment from the pre-fetched map
+            const existingJadwals = existingJadwalsMap.get(enrollment.irsKelasId) || [];
 
             // Check 1: Compare with target kelas's direct schedule (from kelas table)
             if (targetKelas.hari && targetKelas.jamMulai && targetKelas.jamSelesai) {
@@ -216,8 +243,7 @@ export class JadwalKelasRepository implements IJadwalKelasRepository {
                     }
                 }
 
-                // Compare against existing enrollment's jadwal_kelas (if any)
-                const existingJadwals = await this.findByKelasId(enrollment.irsKelasId);
+                // Compare against existing enrollment's jadwal_kelas (using pre-fetched map)
                 for (const existingJadwal of existingJadwals) {
                     const existingDayNum = DAY_MAP[existingJadwal.hari];
                     if (!existingDayNum) continue;
@@ -257,7 +283,6 @@ export class JadwalKelasRepository implements IJadwalKelasRepository {
 
             // Check 3: Compare target's direct schedule against existing's jadwal_kelas
             if (targetKelas.hari && targetKelas.jamMulai && targetKelas.jamSelesai) {
-                const existingJadwals = await this.findByKelasId(enrollment.irsKelasId);
                 const targetDayNum = DAY_MAP[targetKelas.hari];
                 
                 if (targetDayNum) {

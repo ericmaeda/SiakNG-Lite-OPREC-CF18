@@ -40,7 +40,11 @@ export function IrsEnrollmentPage() {
       
       // Load mata kuliah list (always fresh from API)
       const matakuliah = await api.getMataKuliah()
-      setMatakuliahList(matakuliah)
+      // Sort alphabetically by nama
+      const sortedMatakuliah = [...matakuliah].sort((a, b) => 
+        a.nama.localeCompare(b.nama)
+      )
+      setMatakuliahList(sortedMatakuliah)
       
       // Load kelas for each mata kuliah
       console.log('=== Loading kelas for matakuliah ===')

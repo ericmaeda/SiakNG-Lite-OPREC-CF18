@@ -8,8 +8,8 @@ import { RolesGuard } from '../guards/role.guard';
 import { Roles } from '../guards/roles.decorator';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { DrizzleProvider } from 'src/infrastructure/database/drizzle.provider';
-import { eq } from 'drizzle-orm';
-import { mahasiswa, matakuliah, users } from 'src/infrastructure/database/schema';
+import { eq, and, sql } from 'drizzle-orm';
+import { mahasiswa, matakuliah, users, irs, jadwalKelas } from 'src/infrastructure/database/schema';
 
 @ApiTags('IRS - Isian Rencana Studi')
 @ApiBearerAuth()
@@ -262,21 +262,40 @@ export class IrsController {
     @ApiOperation({ summary: 'Lihat semua kelas saya (DOSEN)' })
     @ApiResponse({ status: 200, description: 'Daftar kelas yang diajar' })
     async getMyKelas(@Request() req: any) {
-        const dosenId = req.user.id;  // JWT payload has 'id', not 'userId'
+        const dosenId = req.user.id;
         
         const kelasList = await this.kelasRepo.findByDosenId(dosenId);
         
-        // Add enrollment count for each kelas
-        const kelasWithCount = await Promise.all(
-            kelasList.map(async (k) => {
-                const count = await this.irsRepo.countByKelasId(k.id);
-                return {
-                    ...k,
-                    currentEnrollment: count,
-                    remainingQuota: k.quota - count,
-                };
+        if (kelasList.length === 0) {
+            return [];
+        }
+        
+        // Get all enrollment counts in a single query using IN clause
+        const kelasIds = kelasList.map(k => k.id);
+        const enrollmentCounts = await this.drizzle
+            .select({
+                kelasId: irs.kelasId,
+                count: sql<number>`count(*)::int`,
             })
-        );
+            .from(irs)
+            .where(and(
+                eq(irs.status, 'aktif'),
+                sql`${irs.kelasId} IN ${kelasIds}`
+            ))
+            .groupBy(irs.kelasId);
+        
+        // Create a map for quick lookup
+        const countMap = new Map(enrollmentCounts.map(e => [e.kelasId, e.count]));
+        
+        // Attach counts to kelas
+        const kelasWithCount = kelasList.map(k => {
+            const count = countMap.get(k.id) ?? 0;
+            return {
+                ...k,
+                currentEnrollment: count,
+                remainingQuota: k.quota - count,
+            };
+        });
 
         return kelasWithCount;
     }
@@ -374,20 +393,53 @@ export class IrsController {
             return [];
         }
         
-        // Add enrollment count and jadwal for each kelas
-        const kelasWithCount = await Promise.all(
-            validKelasList.map(async (k) => {
-                const count = await this.irsRepo.countByKelasId(k.id);
-                const jadwalList = await this.jadwalRepo.findByKelasId(k.id);
-                return {
-                    ...k,
-                    currentEnrollment: count,
-                    remainingQuota: k.quota - count,
-                    isFull: count >= k.quota,
-                    jadwal: jadwalList, // Multiple schedules per kelas
-                };
-            })
-        );
+        // Get all enrollment counts in a single query
+        const kelasIds = validKelasList.map(k => k.id);
+        const [enrollmentCounts, allJadwals] = await Promise.all([
+            this.drizzle
+                .select({
+                    kelasId: irs.kelasId,
+                    count: sql<number>`count(*)::int`,
+                })
+                .from(irs)
+                .where(and(
+                    eq(irs.status, 'aktif'),
+                    sql`${irs.kelasId} IN ${kelasIds}`
+                ))
+                .groupBy(irs.kelasId),
+            this.drizzle
+                .select({
+                    id: jadwalKelas.id,
+                    kelasId: jadwalKelas.kelasId,
+                    hari: jadwalKelas.hari,
+                    jamMulai: jadwalKelas.jamMulai,
+                    jamSelesai: jadwalKelas.jamSelesai,
+                    ruangan: jadwalKelas.ruangan,
+                })
+                .from(jadwalKelas)
+                .where(sql`${jadwalKelas.kelasId} IN ${kelasIds}`),
+        ]);
+        
+        // Create maps for quick lookup
+        const countMap = new Map(enrollmentCounts.map(e => [e.kelasId, e.count]));
+        const jadwalMap = new Map<string, typeof allJadwals>();
+        for (const j of allJadwals) {
+            const existing = jadwalMap.get(j.kelasId) || [];
+            existing.push(j);
+            jadwalMap.set(j.kelasId, existing);
+        }
+        
+        // Attach counts and jadwal to each kelas
+        const kelasWithCount = validKelasList.map(k => {
+            const count = countMap.get(k.id) ?? 0;
+            return {
+                ...k,
+                currentEnrollment: count,
+                remainingQuota: k.quota - count,
+                isFull: count >= k.quota,
+                jadwal: jadwalMap.get(k.id) || [],
+            };
+        });
 
         return kelasWithCount;
     }
@@ -400,14 +452,26 @@ export class IrsController {
             throw new NotFoundException('Kelas tidak ditemukan');
         }
         
-        const count = await this.irsRepo.countByKelasId(id);
-        const jadwalList = await this.jadwalRepo.findByKelasId(id);
+        // Get enrollment count and jadwal in parallel (2 queries instead of 2 sequential)
+        const [countResult, jadwalList] = await Promise.all([
+            this.drizzle
+                .select({ count: sql<number>`count(*)::int` })
+                .from(irs)
+                .where(and(
+                    eq(irs.kelasId, id),
+                    eq(irs.status, 'aktif')
+                ))
+                .limit(1),
+            this.jadwalRepo.findByKelasId(id),
+        ]);
+        
+        const count = countResult[0]?.count ?? 0;
         return {
             ...kelas,
             currentEnrollment: count,
             remainingQuota: kelas.quota - count,
             isFull: count >= kelas.quota,
-            jadwal: jadwalList, // Multiple schedules per kelas
+            jadwal: jadwalList,
         };
     }
 }
